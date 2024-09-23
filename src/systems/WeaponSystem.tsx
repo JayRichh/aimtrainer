@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { WeaponSystemProps, WeaponType } from '../types'
+import { WeaponSystemProps } from '../types'
 
 const BULLET_SPEED = 50
 const BULLET_LIFETIME = 2000 // milliseconds

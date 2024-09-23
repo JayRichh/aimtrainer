@@ -1,5 +1,5 @@
 import React from 'react'
-import { SettingsModalProps, GameSettings, Difficulty } from '../types'
+import { SettingsModalProps, GameSettings } from '../types'
 
 export function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: SettingsModalProps) {
   const [localSettings, setLocalSettings] = React.useState<GameSettings>(settings)
