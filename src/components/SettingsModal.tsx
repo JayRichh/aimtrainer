@@ -1,8 +1,14 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { SettingsModalProps, GameSettings } from '../types'
 
 export function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: SettingsModalProps) {
   const [localSettings, setLocalSettings] = React.useState<GameSettings>(settings)
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSettings(settings) // Sync local state with current game settings when modal opens
+    }
+  }, [isOpen, settings])
 
   if (!isOpen) return null
 
@@ -10,7 +16,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: S
     const { name, value } = e.target
     const newValue = e.target.type === 'range' ? parseFloat(value) : value
     setLocalSettings(prev => ({ ...prev, [name]: newValue }))
-    onSettingsChange({ [name]: newValue })
+    onSettingsChange({ [name]: newValue }) // Update the parent state immediately
   }
 
   return (

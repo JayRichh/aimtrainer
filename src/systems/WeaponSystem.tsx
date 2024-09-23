@@ -20,7 +20,7 @@ export function WeaponSystem({ currentWeapon, onWeaponChange }: WeaponSystemProp
     const audioLoader = new THREE.AudioLoader()
     audioLoader.load('/sounds/gunshot.mp3', (buffer) => {
       sound.setBuffer(buffer)
-      sound.setVolume(0.5)
+      sound.setVolume(0.2)
     })
 
     soundRef.current = sound

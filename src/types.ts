@@ -21,6 +21,7 @@ export interface GameSettings {
   volume: number
   fov: number
   difficulty: Difficulty
+  speed: number
 }
 
 export interface SettingsModalProps {

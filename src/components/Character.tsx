@@ -7,9 +7,9 @@ import { CharacterProps } from '../types'
 import { Weapon } from './Weapon'
 
 const JUMP_FORCE = 4
-const SPEED = 5
+const DEFAULT_SPEED = 5
 
-export function Character({ speed = SPEED }: CharacterProps) {
+export function Character({ speed = DEFAULT_SPEED }: CharacterProps) {
   const { camera } = useThree()
   const [ref, api] = useSphere<THREE.Mesh>(() => ({
     mass: 1,
@@ -23,11 +23,16 @@ export function Character({ speed = SPEED }: CharacterProps) {
   const [isJumping, setIsJumping] = useState(false)
 
   useEffect(() => {
-    api.velocity.subscribe((v) => velocity.current.set(v[0], v[1], v[2]))
-    api.position.subscribe((p) => position.current.set(p[0], p[1], p[2]))
+    const unsubscribeVelocity = api.velocity.subscribe((v) => velocity.current.set(v[0], v[1], v[2]))
+    const unsubscribePosition = api.position.subscribe((p) => position.current.set(p[0], p[1], p[2]))
     
     // Set initial camera rotation to look forward
     camera.rotation.set(0, 0, 0)
+
+    return () => {
+      unsubscribeVelocity()
+      unsubscribePosition()
+    }
   }, [api.velocity, api.position, camera])
 
   useFrame(() => {
