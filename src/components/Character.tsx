@@ -1,76 +1,85 @@
-import React, { useRef, useState, useEffect } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
-import { useKeyboardControls } from '@react-three/drei'
+import React, { useRef, useEffect, useState } from 'react'
+import { useThree, useFrame } from '@react-three/fiber'
 import { useSphere } from '@react-three/cannon'
-import * as THREE from 'three'
+import { Vector3, Mesh, Quaternion, Raycaster } from 'three'
+import { useKeyboardControls } from '@react-three/drei'
 import { CharacterProps } from '../types'
-import { Weapon } from './Weapon'
 
-const JUMP_FORCE = 4
-const DEFAULT_SPEED = 5
+const SPEED = 4
+const JUMP_FORCE = 30
+const GRAVITY = 40
+const GROUND_THRESHOLD = 0.5
+const JUMP_COOLDOWN = 250
 
-export function Character({ speed = DEFAULT_SPEED }: CharacterProps) {
-  const { camera } = useThree()
-  const [ref, api] = useSphere<THREE.Mesh>(() => ({
+export function Character({ speed = 1, sensitivity = 0.002, isGamePaused }: CharacterProps) {
+  const { camera, scene } = useThree()
+  const [ref, api] = useSphere<Mesh>(() => ({
     mass: 1,
     type: 'Dynamic',
-    position: [0, 1.6, 0],
+    position: [0, 1, 0],
+    args: [0.5],
   }))
 
-  const velocity = useRef(new THREE.Vector3())
-  const position = useRef(new THREE.Vector3())
+  const velocity = useRef([0, 0, 0])
+  useEffect(() => api.velocity.subscribe((v) => (velocity.current = v)), [api.velocity])
+
+  const pos = useRef([0, 1, 0])
+  useEffect(() => api.position.subscribe((p) => (pos.current = p)), [api.position])
+
   const [, get] = useKeyboardControls()
-  const [isJumping, setIsJumping] = useState(false)
+  const [canJump, setCanJump] = useState(true)
+  const raycaster = new Raycaster(new Vector3(), new Vector3(0, -1, 0), 0, GROUND_THRESHOLD)
 
   useEffect(() => {
-    const unsubscribeVelocity = api.velocity.subscribe((v) => velocity.current.set(v[0], v[1], v[2]))
-    const unsubscribePosition = api.position.subscribe((p) => position.current.set(p[0], p[1], p[2]))
-    
-    // Set initial camera rotation to look forward
-    camera.rotation.set(0, 0, 0)
+    camera.rotation.set(0, Math.PI, 0)
+  }, [camera])
 
-    return () => {
-      unsubscribeVelocity()
-      unsubscribePosition()
-    }
-  }, [api.velocity, api.position, camera])
+  const isOnGround = () => {
+    raycaster.ray.origin.set(pos.current[0], pos.current[1], pos.current[2])
+    const intersects = raycaster.intersectObjects(scene.children, true)
+    return intersects.length > 0
+  }
 
   useFrame(() => {
-    const { forward, backward, left, right, jump } = get()
-    const direction = new THREE.Vector3()
-
-    // Calculate movement direction based on camera orientation
-    const cameraDirection = new THREE.Vector3()
-    camera.getWorldDirection(cameraDirection)
-    cameraDirection.y = 0
-    cameraDirection.normalize()
-
-    const rightVector = new THREE.Vector3()
-    rightVector.crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0)).normalize()
-
-    if (forward) direction.add(cameraDirection)
-    if (backward) direction.sub(cameraDirection)
-    if (left) direction.sub(rightVector)
-    if (right) direction.add(rightVector)
-    direction.normalize().multiplyScalar(speed)
-
-    api.velocity.set(direction.x, velocity.current.y, direction.z)
-    if (jump && !isJumping) {
-      api.velocity.set(velocity.current.x, JUMP_FORCE, velocity.current.z)
-      setIsJumping(true)
+    if (isGamePaused) {
+      api.velocity.set(0, 0, 0)
+      return
     }
 
-    if (Math.abs(velocity.current.y) < 0.05) {
-      setIsJumping(false)
+    const { forward, backward, left, right, jump, quickTurn } = get()
+    const direction = new Vector3()
+
+    const cameraQuaternion = new Quaternion()
+    camera.getWorldQuaternion(cameraQuaternion)
+    const cameraFront = new Vector3(0, 0, -1).applyQuaternion(cameraQuaternion)
+    const cameraRight = new Vector3(1, 0, 0).applyQuaternion(cameraQuaternion)
+
+    if (forward) direction.add(cameraFront)
+    if (backward) direction.sub(cameraFront)
+    if (left) direction.sub(cameraRight)
+    if (right) direction.add(cameraRight)
+
+    direction.y = 0
+    direction.normalize().multiplyScalar(SPEED * speed)
+
+    const onGround = isOnGround()
+    
+    api.velocity.set(direction.x, velocity.current[1], direction.z)
+
+    if (jump && onGround && canJump) {
+      api.velocity.set(velocity.current[0], JUMP_FORCE, velocity.current[2])
+      setCanJump(false)
+      setTimeout(() => setCanJump(true), JUMP_COOLDOWN)
     }
 
-    camera.position.copy(position.current)
+    api.applyForce([0, -GRAVITY, 0], [0, 0, 0])
+
+    if (quickTurn) {
+      camera.rotation.y += Math.PI
+    }
+
+    camera.position.set(pos.current[0], pos.current[1] + 1.6, pos.current[2])
   })
 
-  return (
-    <>
-      <mesh ref={ref} />
-      <Weapon />
-    </>
-  )
+  return <mesh ref={ref} />
 }

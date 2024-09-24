@@ -4,7 +4,16 @@ module.exports = {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      backdropBlur: {
+        sm: '4px',
+      }
+    }
+  },
+  variants: {
+    extend: {
+      scale: ['hover', 'focus'],
+    }
   },
   plugins: [],
 }

@@ -1,15 +1,22 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Physics } from '@react-three/cannon'
-import { Sky, KeyboardControls, PointerLockControls } from '@react-three/drei'
-import { Ground } from './Ground'
-import { Character } from './Character'
-import { WeaponSystem } from '../systems/WeaponSystem'
-import { Target } from './Target'
-import { WeaponType, GameSettings } from '../types'
-import { SettingsModal } from './SettingsModal'
+import { PointerLockControls, KeyboardControls, SoftShadows } from '@react-three/drei'
+
+import { HUD } from './ui/HUD'
+import { SettingsModal } from './ui/SettingsModal'
+import { MainMenu } from './ui/MainMenu'
+import { PostGameSummary } from './ui/PostGameSummary'
+import { PauseMenu } from './ui/PauseMenu'
+import { GameMode, GameProps, GameSettings, TimeOfDay, WeatherCondition } from '../types'
+import { useGameState } from '../hooks/useGameState'
+import { audioManager } from '../utils/audioManager'
+import CameraController from './CameraController'
+import GraphicsController from './GraphicsController'
+import ColorblindController from './ColorblindController'
+import GameControls from './GameControls'
+import SceneSetup from './SceneSetup'
 
 const keyboardMap = [
   { name: 'forward', keys: ['ArrowUp', 'KeyW'] },
@@ -17,193 +24,273 @@ const keyboardMap = [
   { name: 'left', keys: ['ArrowLeft', 'KeyA'] },
   { name: 'right', keys: ['ArrowRight', 'KeyD'] },
   { name: 'jump', keys: ['Space'] },
+  { name: 'quickTurn', keys: ['KeyQ'] },
 ]
 
-const NUM_TARGETS = 10
-const GAME_DURATION = 60 // seconds
+const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpdate }) => {
+  const gameState = useGameState(initialSettings, userProfile, onProfileUpdate)
+  const controlsRef = useRef<any>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sunPosition = useMemo<[number, number, number]>(() => [100, 50, 100], [])
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
-interface GameProps {
-  gameSettings: GameSettings
-}
+  const isUIOpen = useMemo(
+    () =>
+      gameState.showMainMenu ||
+      gameState.showPostGameSummary ||
+      gameState.isSettingsOpen ||
+      gameState.isGamePaused ||
+      isTransitioning,
+    [gameState.showMainMenu, gameState.showPostGameSummary, gameState.isSettingsOpen, gameState.isGamePaused, isTransitioning]
+  )
 
-export default function Game({ gameSettings }: GameProps) {
-  const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('Pistol')
-  const [score, setScore] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION)
-  const [isGameRunning, setIsGameRunning] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
-  const [highScores, setHighScores] = useState<number[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedScores = localStorage.getItem('highScores')
-      return savedScores ? JSON.parse(savedScores) : []
+  const lockControls = useCallback(() => {
+    if (controlsRef.current && !isUIOpen && gameState.isGameRunning) {
+      controlsRef.current.lock()
     }
-    return []
-  })
-  const [settings, setSettings] = useState<GameSettings>(gameSettings)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  }, [isUIOpen, gameState.isGameRunning])
 
-  // Update high scores and save them to localStorage
-  const updateHighScores = useCallback((newScore: number) => {
-    setHighScores(prevScores => {
-      const updatedScores = [...prevScores, newScore].sort((a, b) => b - a).slice(0, 5) // Top 5 scores
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('highScores', JSON.stringify(updatedScores))
+  const unlockControls = useCallback(() => {
+    if (controlsRef.current) {
+      controlsRef.current.unlock()
+    }
+  }, [])
+
+  const handleSettingsChange = useCallback((newSettings: Partial<GameSettings>) => {
+    gameState.handleSettingsChange(newSettings)
+    if (newSettings.volume !== undefined) {
+      audioManager.setVolume(newSettings.volume)
+    }
+  }, [gameState])
+
+  const handleTimeOfDayChange = useCallback((newTimeOfDay: TimeOfDay) => {
+    handleSettingsChange({ timeOfDay: newTimeOfDay })
+  }, [handleSettingsChange])
+
+  const handleWeatherConditionChange = useCallback((newWeatherCondition: WeatherCondition) => {
+    handleSettingsChange({ weatherCondition: newWeatherCondition })
+  }, [handleSettingsChange])
+
+  const startCountdown = useCallback((callback: () => void) => {
+    setIsTransitioning(true)
+    gameState.setResumeCountdown(3)
+    const countdownInterval = setInterval(() => {
+      gameState.setResumeCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval)
+          setIsTransitioning(false)
+          gameState.setIsGamePaused(false) // Ensure the game is unpaused after the countdown
+          callback() // Call the lockControls function after unpausing
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [gameState, setIsTransitioning])
+
+  const handleSettingsClose = useCallback(() => {
+    gameState.setIsSettingsOpen(false)
+    if (gameState.isGameRunning && !gameState.isGamePaused) {
+      startCountdown(lockControls)
+    }
+  }, [gameState, lockControls, startCountdown])
+
+  const handleStartGame = useCallback((selectedMode: GameMode) => {
+    gameState.startGame(selectedMode)
+    startCountdown(() => {
+      // Ensure the controls lock after the countdown and when the game starts
+      lockControls()
+    })
+  }, [gameState, lockControls, startCountdown])
+  
+
+  const handlePauseToggle = useCallback(() => {
+    if (gameState.isGameRunning && !isTransitioning && !gameState.isSettingsOpen) {
+      if (gameState.isGamePaused) {
+        // Game is paused and we want to resume it, so we start the countdown here.
+        startCountdown(lockControls)
+      } else {
+        // Game is running and we want to pause it, so we unlock the controls and pause the game.
+        unlockControls()
+        gameState.togglePause()
       }
-      return updatedScores
-    })
-  }, [])
+    }
+  }, [gameState, isTransitioning, lockControls, unlockControls, startCountdown])
+  
+  const handleRestart = useCallback(() => {
+    gameState.togglePause()
+    gameState.resetGameState(gameState.gameMode)
+    gameState.setIsGameRunning(true)
+    gameState.setIsGamePaused(false)
+    handleStartGame(gameState.gameMode)
+  }, [gameState, handleStartGame])
 
-  const handleWeaponChange = useCallback((weapon: WeaponType) => {
-    setCurrentWeapon(weapon)
-  }, [])
-
-  const generateTarget = useCallback(() => ({
-    position: [
-      (Math.random() - 0.5) * 20,
-      Math.random() * 5 + 1,
-      (Math.random() - 0.5) * 20,
-    ] as [number, number, number],
-    size: settings.difficulty === 'easy' ? 1.2 : settings.difficulty === 'medium' ? 1 : 0.8,
-  }), [settings.difficulty])
-
-  const [targets, setTargets] = useState(() => Array(NUM_TARGETS).fill(null).map(generateTarget))
-
-  const handleTargetHit = useCallback((index: number) => {
-    setScore(prevScore => prevScore + 1)
-    setTargets(prevTargets => {
-      const newTargets = [...prevTargets]
-      newTargets[index] = generateTarget()
-      return newTargets
-    })
-  }, [generateTarget])
+  const handleQuit = useCallback(() => {
+    gameState.togglePause()
+    gameState.setShowMainMenu(true)
+    gameState.setIsGameRunning(false)
+    unlockControls()
+  }, [gameState, unlockControls])
 
   useEffect(() => {
-    if (isGameRunning && !isPaused && timeLeft > 0) {
-      const timer = setInterval(() => setTimeLeft(time => time - 1), 1000)
-      return () => clearInterval(timer)
-    } else if (isGameRunning && timeLeft === 0) {
-      setIsGameRunning(false)
-      updateHighScores(score)
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handlePauseToggle()
+      }
     }
-  }, [isGameRunning, timeLeft, score, isPaused, updateHighScores])
 
-  const startGame = useCallback(() => {
-    setScore(0)
-    setTimeLeft(GAME_DURATION)
-    setTargets(Array(NUM_TARGETS).fill(null).map(generateTarget))
-    setIsGameRunning(true)
-    setIsPaused(false)
-  }, [generateTarget])
-
-  const pauseGame = () => {
-    setIsPaused(prev => !prev)
-  }
-
-  const resetScores = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('highScores')
+    window.addEventListener('keydown', handleKeyPress)
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress)
     }
-    setHighScores([])
-  }
+  }, [handlePauseToggle])
 
-  const handleSettingsChange = (updatedSettings: Partial<GameSettings>) => {
-    setSettings(prevSettings => ({
-      ...prevSettings,
-      ...updatedSettings,
-    }))
-  }
+  useEffect(() => {
+    if (gameState.isGameRunning && !isUIOpen) {
+      lockControls()
+    } else {
+      unlockControls()
+    }
+  }, [gameState.isGameRunning, isUIOpen, lockControls, unlockControls])
+
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      if (document.pointerLockElement === null && gameState.isGameRunning && !isUIOpen) {
+        handlePauseToggle()
+      }
+    }
+
+    document.addEventListener('pointerlockchange', handlePointerLockChange)
+    return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange)
+    }
+  }, [gameState, isUIOpen, handlePauseToggle])
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
+      canvas.style.position = 'absolute'
+      canvas.style.top = '0'
+      canvas.style.left = '0'
+    }
+  }, [])
+
+  const physicsGravity = useMemo<[number, number, number]>(() =>
+    [0, -gameState.settings.gravity, 0],
+    [gameState.settings.gravity]
+  )
+
+  const handleCanvasClick = useCallback(() => {
+    if (gameState.isGameRunning && !isUIOpen) {
+      lockControls()
+    }
+  }, [gameState.isGameRunning, isUIOpen, lockControls])
 
   return (
-    <>
+    <div className="relative w-screen h-screen overflow-hidden">
       <KeyboardControls map={keyboardMap}>
-        <Canvas shadows camera={{ fov: settings.fov, position: [0, 1.6, 0] }}>
-          <Sky sunPosition={[100, 20, 100]} />
-          <ambientLight intensity={0.3} />
-          <pointLight castShadow intensity={0.8} position={[100, 100, 100]} />
-          <Physics>
-            <Ground />
-            <Character speed={settings.speed || 5} />
-            {targets.map((target, index) => (
-              <Target
-                key={index}
-                position={target.position}
-                size={target.size}
-                onHit={() => handleTargetHit(index)}
-                difficulty={settings.difficulty}
-              />
-            ))}
-            <WeaponSystem currentWeapon={currentWeapon} onWeaponChange={handleWeaponChange} />
-          </Physics>
-          {isGameRunning && <PointerLockControls scale={settings.sensitivity} />}
+        <Canvas 
+          ref={canvasRef} 
+          shadows 
+          camera={{ fov: gameState.settings.fov, position: [0, 1.6, 0], near: 0.1, far: 1000 }}
+          onClick={handleCanvasClick}
+        >
+          <CameraController fov={gameState.settings.fov} />
+          <GraphicsController quality={gameState.settings.graphicsQuality} />
+          <ColorblindController mode={gameState.settings.colorblindMode} />
+          <SoftShadows size={10} samples={gameState.settings.graphicsQuality * 5} focus={0.5} />
+          <SceneSetup 
+            sunPosition={sunPosition} 
+            graphicsQuality={gameState.settings.graphicsQuality}
+            timeOfDay={gameState.settings.timeOfDay}
+            weatherCondition={gameState.settings.weatherCondition}
+          />
+          {gameState.isGameRunning && (
+            <GameControls 
+              gameState={gameState} 
+              physicsGravity={[0, -gameState.settings.gravity, 0]} 
+              isGamePaused={gameState.isGamePaused} 
+              isSettingsOpen={gameState.isSettingsOpen} 
+              isTransitioning={isTransitioning} 
+            />
+          )}
+          {gameState.isGameRunning && !isUIOpen && (
+            <PointerLockControls ref={controlsRef} />
+          )}
         </Canvas>
       </KeyboardControls>
 
-      {/* UI Overlay */}
-      <div className="absolute top-0 right-0 p-4 text-white bg-black bg-opacity-50 rounded-bl-lg">
-        <p>Score: {score}</p>
-        <p>Time: {timeLeft}s</p>
-        <p>High Score: {highScores.length > 0 ? Math.max(...highScores) : 0}</p>
-      </div>
-
-      {/* Game Over / Start Screen */}
-      {!isGameRunning && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-70 p-6 rounded-lg text-white text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            {timeLeft === GAME_DURATION ? 'Aim Trainer' : 'Game Over'}
-          </h2>
-          {timeLeft !== GAME_DURATION && (
-            <p className="text-xl mb-4">Final Score: {score}</p>
-          )}
-          <button
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded text-lg transition duration-200 transform hover:scale-105"
-            onClick={startGame}
-          >
-            {timeLeft === GAME_DURATION ? 'Start Game' : 'Play Again'}
-          </button>
+      {gameState.showMainMenu && (
+        <div className="absolute inset-0">
+          <MainMenu
+            onStartGame={handleStartGame}
+            onSettingsOpen={() => gameState.setIsSettingsOpen(true)}
+            highScore={userProfile?.highScore || 0}
+            onJoinLobby={() => gameState.setIsShowLobby(true)}
+          />
         </div>
       )}
 
-      {/* Settings Button */}
-      <div className="absolute top-4 left-4 z-10">
-        <button
-          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition duration-200"
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          Settings
-        </button>
-      </div>
+      {gameState.showPostGameSummary && (
+        <div className="absolute inset-0">
+          <PostGameSummary
+            score={gameState.score}
+            accuracy={gameState.accuracy}
+            onRestart={() => handleStartGame(gameState.gameMode)}
+            onExit={() => gameState.setShowMainMenu(true)}
+            playerRankings={gameState.playerRankings}
+          />
+        </div>
+      )}
 
-      {/* Settings Modal */}
+      {gameState.isGameRunning && (
+        <div className="absolute inset-0">
+          <HUD
+            score={gameState.score}
+            timeLeft={gameState.timeLeft}
+            accuracy={gameState.accuracy}
+            health={100}
+            settings={gameState.settings}
+            currentWeapon={gameState.currentWeapon}
+            isPaused={gameState.isGamePaused || isTransitioning}
+            hotbar={gameState.hotbar}
+            onWeaponSwitch={gameState.handleWeaponSwitch}
+            cycleWeapon={gameState.cycleWeapon}
+            // players={gameState.playerRankings}
+          />
+        </div>
+      )}
+
+      {gameState.isGamePaused && !gameState.isSettingsOpen && !isTransitioning && (
+        <PauseMenu
+          onResume={handlePauseToggle}
+          onRestart={handleRestart}
+          onQuit={handleQuit}
+          onSettings={() => {
+            gameState.setIsSettingsOpen(true)
+            unlockControls()
+          }}
+        />
+      )}
+
+      {(gameState.resumeCountdown > 0 || isTransitioning) && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-6xl font-bold">
+          {gameState.resumeCountdown > 0 ? gameState.resumeCountdown : 'Applying settings...'}
+        </div>
+      )}
+
       <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={settings}
+        isOpen={gameState.isSettingsOpen}
+        onClose={handleSettingsClose}
+        settings={gameState.settings}
         onSettingsChange={handleSettingsChange}
+        userProfile={userProfile}
+        onProfileUpdate={onProfileUpdate}
       />
-
-      {/* Pause, Reset, and Scoreboard Buttons */}
-      {isGameRunning && (
-        <div className="absolute bottom-4 right-4 flex space-x-4 z-10">
-          <button
-            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded transition duration-200"
-            onClick={pauseGame}
-          >
-            {isPaused ? 'Resume' : 'Pause'}
-          </button>
-          <button
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition duration-200"
-            onClick={resetScores}
-          >
-            Reset Scores
-          </button>
-          <button
-            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition duration-200"
-            onClick={() => alert(`High Scores: ${highScores.join(', ')}`)}
-          >
-            View Scoreboard
-          </button>
-        </div>
-      )}
-    </>
+    </div>
   )
 }
+
+export default Game

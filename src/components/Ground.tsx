@@ -1,5 +1,6 @@
 import React from 'react'
 import { usePlane } from '@react-three/cannon'
+import type { PlaneProps } from '@react-three/cannon'
 import { DoubleSide, TextureLoader, RepeatWrapping } from 'three'
 import { useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -9,7 +10,7 @@ export function Ground() {
     rotation: [-Math.PI / 2, 0, 0],
     position: [0, -0.1, 0],
     type: 'Static',
-  }))
+  } as PlaneProps))
 
   const texture = useLoader(TextureLoader, '/textures/ground.jpg')
   texture.wrapS = texture.wrapT = RepeatWrapping
