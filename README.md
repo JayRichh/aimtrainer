@@ -1,7 +1,6 @@
 # AimTrainer
 
-![clipboard-image-1727163469](https://github.com/user-attachments/assets/789d1e89-e467-4ecc-abf9-0c6c557666c6)
-
+![image](https://github.com/user-attachments/assets/56f25c82-5f7c-4374-9557-e8854b914985)
 
 A work-in-progress demo app exploring physics, Next.js, Three.js, and WebGL integration.
 
@@ -10,6 +9,8 @@ A work-in-progress demo app exploring physics, Next.js, Three.js, and WebGL inte
 AimTrainer is an interactive 3D aim training game built with Next.js. 
 It features floating targets for players to shoot, basic physics and 3D graphics.
 
+![image](https://github.com/user-attachments/assets/e3352ef0-29e2-4836-ab39-86f5f6df3470)
+
 ## Tech Stack
 
 - Next.js
@@ -17,6 +18,8 @@ It features floating targets for players to shoot, basic physics and 3D graphics
 - Three.js
 - WebGL
 - Tailwind CSS
+
+![image](https://github.com/user-attachments/assets/98141c75-1b32-4068-b5a8-7b70f4465d60)
 
 ## Project Structure
 
