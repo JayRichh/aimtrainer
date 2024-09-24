@@ -3,24 +3,34 @@ import { useFrame, useThree, extend, ThreeEvent, ReactThreeFiber } from '@react-
 import * as THREE from 'three'
 import { TargetProps } from '../types'
 import { shaderMaterial } from '@react-three/drei'
+
 class GlowMaterial extends THREE.ShaderMaterial {
   constructor() {
     super({
       uniforms: {
-        color: { value: new THREE.Color(0xffffff) }
+        color: { value: new THREE.Color(0xffffff) },
+        time: { value: 0 },
+        fadeIn: { value: 0 }
       },
       vertexShader: `
         varying vec3 vNormal;
+        varying vec2 vUv;
         void main() {
           vNormal = normalize(normalMatrix * normal);
+          vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: `
         uniform vec3 color;
+        uniform float time;
+        uniform float fadeIn;
         varying vec3 vNormal;
+        varying vec2 vUv;
         void main() {
           float intensity = pow(0.85 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 7.0);
-          gl_FragColor = vec4(color * intensity, 1.0);
+          float pulse = 0.5 + 0.5 * sin(time * 2.0 + vUv.x * 10.0 + vUv.y * 10.0);
+          vec3 glow = color * intensity * (0.5 + 0.5 * pulse);
+          gl_FragColor = vec4(glow, 1.0) * fadeIn;
         }`
     });
   }
@@ -75,7 +85,7 @@ export const Target: React.FC<TargetProps> = ({ data, settings, onHit }) => {
       groupRef.current.lookAt(camera.position)
 
       // Update shader time and fade-in
-      if (glowRef.current) {
+      if (glowRef.current && glowRef.current.uniforms) {
         glowRef.current.uniforms.time.value = time
         glowRef.current.uniforms.fadeIn.value = fadeIn
       }

@@ -103,23 +103,23 @@ export function HUD({ score, timeLeft, accuracy, health, settings, currentWeapon
     }
   }
 
-  const renderPlayers = () => {
-    if (!players || players.length <= 1) return null;
-    return (
-      <div className="bg-black bg-opacity-80 p-3 rounded-lg text-center shadow-lg max-w-xs">
-        <div className="mb-2 text-xl font-bold">Players</div>
-        {players.map((player) => (
-          <div key={player.id} className="mb-1">
-            <div className="text-sm">{player.username}</div>
-            <div className="flex justify-between">
-              <span className="text-xs">Score: {player.score}</span>
-              <span className="text-xs">Health: {player.health}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  // const renderPlayers = () => {
+  //   if (!players || players.length <= 1) return null;
+  //   return (
+  //     <div className="bg-black bg-opacity-80 p-3 rounded-lg text-center shadow-lg max-w-xs">
+  //       <div className="mb-2 text-xl font-bold">Players</div>
+  //       {players.map((player) => (
+  //         <div key={player.id} className="mb-1">
+  //           <div className="text-sm">{player.username}</div>
+  //           <div className="flex justify-between">
+  //             <span className="text-xs">Score: {player.score}</span>
+  //             <span className="text-xs">Health: {player.health}</span>
+  //           </div>
+  //         </div>
+  //       ))}
+  //     </div>
+  //   );
+  // };
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -197,9 +197,9 @@ export function HUD({ score, timeLeft, accuracy, health, settings, currentWeapon
           <div className="text-white text-6xl font-bold tracking-widest animate-pulse">PAUSED</div>
         </div>
         )}
-        {players && players.length > 0 && (
+        {/* {players && players.length > 0 && (
           renderPlayers()
-        )}
+        )} */}
     </div>
   )
 }
