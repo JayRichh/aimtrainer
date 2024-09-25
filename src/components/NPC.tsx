@@ -1,62 +1,72 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { NPCProps } from '../types';
-import Player from './Player'; // Import the Player component
+import { NPCProps, WeaponType } from '../types';
+import Player from './Player';
+import { Weapon } from './Weapon';
 
 const NPC: React.FC<NPCProps> = ({ data, settings, onHit, onShoot, playerPositions }) => {
   const npcRef = useRef<THREE.Group>(null);
+  const lastShootTimeRef = useRef<number>(Date.now());
+  const muzzleFlashRef = useRef<THREE.Mesh>(null);
+  const [isShooting, setIsShooting] = useState(false);
+  const steeringForceRef = useRef<THREE.Vector3>(new THREE.Vector3());
 
   useEffect(() => {
     if (npcRef.current) {
-      npcRef.current.position.set(data.position[0], data.position[1], data.position[2]);
-      npcRef.current.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
+      npcRef.current.position.set(...data.position);
+      npcRef.current.rotation.set(...data.rotation);
     }
   }, [data.position, data.rotation]);
+
+  const handleNPCShoot = () => {
+    onShoot(data.id);
+    setIsShooting(true);
+    setTimeout(() => setIsShooting(false), 100);
+  };
 
   useFrame((state, delta) => {
     if (!npcRef.current) return;
 
-    // Basic AI logic
-    const npcPosition = new THREE.Vector3(data.position[0], data.position[1], data.position[2]);
+    const npcPosition = new THREE.Vector3(...data.position);
     let closestPlayerDistance = Infinity;
-    let closestPlayerPosition: [number, number, number] | null = null;
+    let closestPlayerPosition: THREE.Vector3 | null = null;
 
     Object.values(playerPositions).forEach((playerPos) => {
-      const playerPosition = new THREE.Vector3(...playerPos); // Convert array to Vector3
+      const playerPosition = new THREE.Vector3(...playerPos);
       const distance = npcPosition.distanceTo(playerPosition);
 
       if (distance < closestPlayerDistance) {
         closestPlayerDistance = distance;
-        closestPlayerPosition = playerPos;
+        closestPlayerPosition = playerPosition;
       }
     });
 
     if (closestPlayerPosition) {
       // Look at the closest player
-      npcRef.current.lookAt(
-        new THREE.Vector3(
-          closestPlayerPosition[0],
-          closestPlayerPosition[1],
-          closestPlayerPosition[2],
-        ),
-      );
+      npcRef.current.lookAt(closestPlayerPosition);
 
-      // Move towards the player if not too close
-      if (closestPlayerDistance > 5) {
-        const direction = new THREE.Vector3(
-          closestPlayerPosition[0],
-          closestPlayerPosition[1],
-          closestPlayerPosition[2],
-        )
-          .sub(npcPosition)
-          .normalize();
-        npcRef.current.position.add(direction.multiplyScalar(data.speed * delta));
-      }
+      // Move towards the player using steering behavior
+      const desiredVelocity = new THREE.Vector3().subVectors(closestPlayerPosition, npcPosition).normalize().multiplyScalar(settings.npcMovementSpeed);
+      const steeringForce = desiredVelocity.sub(steeringForceRef.current);
+      steeringForceRef.current.add(steeringForce.multiplyScalar(delta * 3));
+      npcRef.current.position.add(steeringForceRef.current.clone().multiplyScalar(delta));
 
-      // Shoot at intervals
-      if (Date.now() - data.lastShootTime > data.shootInterval) {
-        onShoot(data.id);
+      // Check line of sight before shooting
+      const direction = new THREE.Vector3().subVectors(closestPlayerPosition, npcPosition).normalize();
+      const raycaster = new THREE.Raycaster(npcPosition, direction);
+      const intersects = raycaster.intersectObjects(state.scene.children, true);
+      
+      if (intersects.length > 0 && intersects[0].distance < closestPlayerDistance) {
+        // Clear line of sight, shoot at intervals based on reaction time and accuracy
+        const currentTime = Date.now();
+        if (currentTime - lastShootTimeRef.current > data.reactionTime) {
+          const hitChance = Math.random();
+          if (hitChance <= data.accuracy) {
+            handleNPCShoot();
+          }
+          lastShootTimeRef.current = currentTime;
+        }
       }
     }
 
@@ -70,11 +80,17 @@ const NPC: React.FC<NPCProps> = ({ data, settings, onHit, onShoot, playerPositio
 
   return (
     <group ref={npcRef}>
-      {/* Render the Player component as the NPC */}
       <Player
-        position={[data.position[0], data.position[1], data.position[2]]}
-        rotation={[data.rotation[0], data.rotation[1], data.rotation[2]]}
+        position={data.position}
+        rotation={data.rotation}
         speed={data.speed}
+      />
+      <Weapon
+        currentWeapon={data.weapon}
+        isSwapping={false}
+        isShooting={isShooting}
+        onShoot={handleNPCShoot}
+        muzzleFlashRef={muzzleFlashRef}
       />
     </group>
   );

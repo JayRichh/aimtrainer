@@ -3,7 +3,7 @@ import { Physics } from '@react-three/cannon';
 import { Ground } from './Ground';
 import { Character } from './Character';
 import { WeaponSystem } from '@/systems/WeaponSystem';
-import { WeaponSystemProps, WeaponType, NPCData } from '../types';
+import { WeaponSystemProps, WeaponType, NPCData, PlayerData } from '../types';
 import { Target } from './Target';
 import NPC from './NPC';
 import { useGameState } from '../hooks/useGameState';
@@ -30,6 +30,18 @@ const GameControls: React.FC<GameControlsProps> = ({
   onNPCShoot,
 }) => {
   const isPaused = isGamePaused || isSettingsOpen || isTransitioning;
+
+  const playerData: PlayerData = {
+    id: 'player',
+    username: 'Player',
+    position: gameState.playerPosition,
+    rotation: gameState.playerRotation,
+    health: gameState.playerHealth,
+    maxHealth: gameState.playerMaxHealth,
+    weapon: gameState.currentWeapon,
+    score: gameState.score,
+    team: gameState.playerTeam,
+  };
 
   return (
     <Physics gravity={physicsGravity}>
@@ -69,18 +81,7 @@ const GameControls: React.FC<GameControlsProps> = ({
         isGamePaused={isPaused}
         npcs={npcs}
         setNPCs={gameState.setNPCs}
-        players={[
-          {
-            id: 'player',
-            username: 'Player',
-            position: gameState.playerPosition,
-            rotation: gameState.playerRotation,
-            health: gameState.playerHealth,
-            maxHealth: gameState.playerMaxHealth,
-            weapon: gameState.currentWeapon,
-            score: gameState.score,
-          },
-        ]}
+        players={[playerData]}
         setPlayers={undefined}
       />
     </Physics>

@@ -21,6 +21,11 @@ import { hotbarConfig } from '../config/hotbarConfig';
 import { initSocket, closeSocket, getSocket } from '../utils/socketClient';
 import { Socket } from 'socket.io-client';
 
+const weaponTypes: WeaponType[] = [
+  'Pistol', 'Rifle', 'Shotgun', 'Sniper', 'SMG',
+  'LaserGun', 'Crossbow', 'Flamethrower'
+];
+
 const generateRandomNPCs = (
   count: number,
   settings: GameSettings,
@@ -37,7 +42,7 @@ const generateRandomNPCs = (
     rotation: [0, Math.random() * 360, 0],
     health: 100,
     maxHealth: 100,
-    weapon: 'Pistol',
+    weapon: weaponTypes[Math.floor(Math.random() * weaponTypes.length)],
     state: 'idle',
     speed: settings.npcMovementSpeed,
     lastShootTime: Date.now(),
@@ -387,10 +392,18 @@ export const useGameState = (
             // Implement more advanced NPC AI logic here
             const newX = npc.position[0] + (Math.random() - 0.5) * settings.npcMovementSpeed;
             const newZ = npc.position[2] + (Math.random() - 0.5) * settings.npcMovementSpeed;
+
+            // Randomly change NPC weapon based on probability
+            const shouldChangeWeapon = Math.random() < settings.npcWeaponChangeProbability;
+            const weapon = shouldChangeWeapon
+              ? weaponTypes[Math.floor(Math.random() * weaponTypes.length)]
+              : npc.weapon;
+
             return {
               ...npc,
               position: [newX, 0, newZ],
               state: Math.random() > 0.8 ? 'attacking' : 'moving',
+              weapon,
             };
           });
         });
@@ -416,6 +429,7 @@ export const useGameState = (
     settings.targetSpeed,
     settings.targetMovementRange,
     settings.npcMovementSpeed,
+    // settings.npcWeaponChangeProbability,
     score,
     playerKills,
     userProfile?.id,
