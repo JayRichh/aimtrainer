@@ -256,4 +256,5 @@ export interface GameState {
   gameMode: GameMode;
   timeRemaining: number;
   isGameOver: boolean;
+  handlePostGameAction: (_: string) => void;
 }

@@ -18,6 +18,8 @@ import {
   regenerateTarget,
 } from '../utils/targetUtils';
 import { hotbarConfig } from '../config/hotbarConfig';
+import { initSocket, closeSocket, getSocket } from '../utils/socketClient';
+import { Socket } from 'socket.io-client';
 
 const generateRandomNPCs = (
   count: number,
@@ -167,6 +169,7 @@ export const useGameState = (
     },
     [settings],
   );
+  
 
   const startGame = useCallback(
     (selectedMode: GameMode, isMultiplayer: boolean, npcCount: number) => {
@@ -175,9 +178,15 @@ export const useGameState = (
       setIsGamePaused(false);
       setShowMainMenu(false);
       setShowPostGameSummary(false);
+  
+      // Initialize Socket.IO connection
+      if (isMultiplayer) {
+        initSocket();
+      }
     },
     [resetGameState],
   );
+  
 
   const togglePause = useCallback(() => {
     if (isGameRunning) {
@@ -206,7 +215,10 @@ export const useGameState = (
       settings,
     };
     onProfileUpdate(updatedProfile);
-  }, [score, userProfile, settings, onProfileUpdate]);
+    if (isMultiplayer) {
+      closeSocket();
+    }
+  }, [score, userProfile, settings, onProfileUpdate, isMultiplayer]);
 
   const handleSettingsChange = useCallback((updatedSettings: Partial<GameSettings>) => {
     setSettings((prevSettings) => ({
@@ -214,6 +226,16 @@ export const useGameState = (
       ...updatedSettings,
     }));
   }, []);
+
+  const handlePostGameAction = useCallback((action: 'restart' | 'exit') => {
+    if (action === 'restart') {
+      startGame(gameMode, isMultiplayer, npcCount);
+    } else {
+      setShowPostGameSummary(false);
+      setShowMainMenu(true);
+      setIsGameRunning(false);
+    }
+  }, [gameMode, isMultiplayer, npcCount, startGame]);
 
   const handleTargetHit = useCallback(
     (targetId: string, hitScore: number) => {
@@ -235,8 +257,12 @@ export const useGameState = (
           return target;
         });
       });
-    },
-    [settings]
+      const socket: Socket | null = getSocket();
+      if (isMultiplayer && socket) {
+        socket.emit('targetHit', { targetId, hitScore });
+      }
+  },
+    [settings, isMultiplayer]
   );
   
   const handleNPCHit = useCallback((npcId: string, hitScore: number) => {
@@ -279,10 +305,56 @@ export const useGameState = (
   }, []);
 
   useEffect(() => {
+    const socket: Socket | null = getSocket();
+    if (isGameRunning && isMultiplayer && socket) {
+      socket.emit('gameStart', { gameMode, settings });
+    }
+  }, [isGameRunning, isMultiplayer, gameMode, settings]);
+  
+  useEffect(() => {
+    const socket = getSocket();
+    if (!isGameRunning && isMultiplayer && socket) {
+      socket.emit('gameEnd', { score, playerKills });
+    }
+  }, [isGameRunning, isMultiplayer, score, playerKills]);
+
+  useEffect(() => {
     if (shotsFired > 0) {
       setAccuracy((hits / shotsFired) * 100);
     }
   }, [shotsFired, hits]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (isMultiplayer && socket) {
+      socket.on('targetHitUpdate', (data: { targetId: string; hitScore: number }) => {
+        // setTargets((prevTargets) => {
+        //   // Update target health based on the received event
+        //   // Similar logic to handleTargetHit
+        //   console.log(prevTargets)
+        // });
+      });
+  
+      socket.on('gameStarted', (data: { gameMode: GameMode; settings: GameSettings }) => {
+        setGameMode(data.gameMode);
+        setSettings(data.settings);
+        setIsGameRunning(true);
+      });
+  
+      socket.on('gameEnded', (data: { score: number; playerKills: number }) => {
+        setIsGameRunning(false);
+        setShowPostGameSummary(true);
+        // Update player rankings with the received data
+      });
+  
+      return () => {
+        socket.off('targetHitUpdate');
+        socket.off('gameStarted');
+        socket.off('gameEnded');
+      };
+    }
+  }, [isMultiplayer]);
+  
 
   useEffect(() => {
     if (isGameRunning && !isGamePaused && gameMode !== 'endurance') {
@@ -390,6 +462,7 @@ export const useGameState = (
     setIsMultiplayer,
     setNpcCount,
     resetGameState,
+    handlePostGameAction,
     startGame,
     togglePause,
     openSettings,

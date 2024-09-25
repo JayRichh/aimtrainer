@@ -43,6 +43,14 @@ export function PostGameSummary({
 }: PostGameSummaryProps) {
   const showKills = gameMode === 'deathmatch' || gameMode === 'teamDeathmatch';
 
+  const handleRestart = () => {
+    onRestart();
+  };
+
+  const handleExit = () => {
+    onExit();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4 backdrop-blur-sm">
       <div className="w-full max-w-3xl rounded-xl bg-gray-800 p-8 text-white shadow-2xl">
@@ -77,14 +85,14 @@ export function PostGameSummary({
         <PlayerRankings playerRankings={playerRankings} gameMode={gameMode} />
         <div className="mt-10 space-y-4">
           <button
-            onClick={onRestart}
+            onClick={handleRestart}
             className="hover:scale-102 flex w-full transform items-center justify-center rounded-lg bg-blue-600 px-6 py-4 text-lg font-bold text-white transition duration-200 ease-in-out hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
           >
             <RotateCcw className="mr-2" size={20} />
             Play Again
           </button>
           <button
-            onClick={onExit}
+            onClick={handleExit}
             className="hover:scale-102 flex w-full transform items-center justify-center rounded-lg bg-gray-600 px-6 py-4 text-lg font-bold text-white transition duration-200 ease-in-out hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
           >
             <Home className="mr-2" size={20} />

@@ -87,7 +87,7 @@ export function WeaponSystem({
   const [isShooting, setIsShooting] = useState(false);
   const recoilRef = useRef<THREE.Group>(new THREE.Group());
   const recoilVelocityRef = useRef(new THREE.Vector3());
-  const weaponRef = useRef<THREE.Group>(new THREE.Group());
+  const weaponRef = useRef<THREE.Group>(null!);
   const muzzleFlashRef = useRef<THREE.Mesh | null>(null);
 
   useEffect(() => {

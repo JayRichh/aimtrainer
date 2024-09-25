@@ -113,6 +113,14 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
     [gameState, setIsTransitioning],
   );
 
+  const handlePostGameRestart = useCallback(() => {
+    gameState.handlePostGameAction('restart');
+  }, [gameState]);
+
+  const handlePostGameExit = useCallback(() => {
+    gameState.handlePostGameAction('exit');
+  }, [gameState]);
+
   const handleSettingsClose = useCallback(() => {
     gameState.setIsSettingsOpen(false);
     if (gameState.isGameRunning && !gameState.isGamePaused) {

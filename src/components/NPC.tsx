@@ -1,12 +1,11 @@
 import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { NPCProps, Vector3 } from '../types';
+import { NPCProps } from '../types';
+import Player from './Player'; // Import the Player component
 
 const NPC: React.FC<NPCProps> = ({ data, settings, onHit, onShoot, playerPositions }) => {
   const npcRef = useRef<THREE.Group>(null);
-  const { nodes, materials } = useGLTF('/models/character.glb') as any; // Assuming we have a character model
 
   useEffect(() => {
     if (npcRef.current) {
@@ -71,8 +70,12 @@ const NPC: React.FC<NPCProps> = ({ data, settings, onHit, onShoot, playerPositio
 
   return (
     <group ref={npcRef}>
-      <mesh geometry={nodes.Character.geometry} material={materials.CharacterMaterial} castShadow />
-      {/* Add weapon model here */}
+      {/* Render the Player component as the NPC */}
+      <Player
+        position={[data.position[0], data.position[1], data.position[2]]}
+        rotation={[data.rotation[0], data.rotation[1], data.rotation[2]]}
+        speed={data.speed}
+      />
     </group>
   );
 };
