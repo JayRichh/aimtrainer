@@ -8,6 +8,8 @@ import {
   NPCData,
   GameMode,
 } from '../../types';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Clock, Crosshair, Target } from 'lucide-react';
 
 const getColorForMode = (mode: string): string => {
   switch (mode) {
@@ -93,9 +95,11 @@ const Hotbar: React.FC<{
   return (
     <div className="flex space-x-2">
       {hotbar.map((slot) => (
-        <div
+        <motion.div
           key={slot.key}
-          className={`flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-gray-700 transition-all duration-200 ${
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg bg-gray-700 transition-all duration-200 ${
             currentWeapon === slot.weapon
               ? 'border-2 border-blue-400 bg-gray-600'
               : 'hover:bg-gray-600'
@@ -103,12 +107,20 @@ const Hotbar: React.FC<{
           onClick={() => onWeaponSwitch(slot.key)}
         >
           <span className="absolute left-1 top-1 text-xs text-blue-300">{slot.key}</span>
-          <span className="text-sm font-bold">{slot.weapon}</span>
-        </div>
+          <span className="text-center text-sm font-bold leading-tight">
+            {slot.weapon.split(' ').map((word, index) => (
+              <React.Fragment key={index}>
+                {word}
+                <br />
+              </React.Fragment>
+            ))}
+          </span>
+        </motion.div>
       ))}
     </div>
   );
 };
+
 
 export const renderCrosshair = (style: string, color: string) => {
   switch (style) {
@@ -185,35 +197,54 @@ export function HUD({
   return (
     <div className="pointer-events-none absolute inset-0 font-sans text-white">
       {/* Top HUD: Game Mode, Score, Time, and Accuracy */}
-      <div className="absolute left-1/2 top-4 -translate-x-1/2 transform rounded-lg bg-gray-800 bg-opacity-90 p-4 text-center shadow-lg">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute left-1/2 top-4 -translate-x-1/2 transform rounded-lg bg-gray-800 bg-opacity-90 p-4 text-center shadow-lg"
+      >
         <div className="mb-2 text-xl font-bold text-blue-400">
           {gameMode.charAt(0).toUpperCase() + gameMode.slice(1)} Mode
         </div>
         <div className="grid grid-cols-3 gap-6">
           <div>
-            <p className="mb-1 text-sm uppercase tracking-wide text-gray-300">Score</p>
+            <p className="mb-1 flex items-center justify-center text-sm uppercase tracking-wide text-gray-300">
+              <Target className="mr-1" size={16} />
+              Score
+            </p>
             <p className="text-3xl font-bold">{score}</p>
           </div>
           {gameMode !== 'endurance' && (
             <div>
-              <p className="mb-1 text-sm uppercase tracking-wide text-gray-300">Time</p>
+              <p className="mb-1 flex items-center justify-center text-sm uppercase tracking-wide text-gray-300">
+                <Clock className="mr-1" size={16} />
+                Time
+              </p>
               <p className="text-3xl font-bold">{timeLeft}s</p>
             </div>
           )}
           <div>
-            <p className="mb-1 text-sm uppercase tracking-wide text-gray-300">Accuracy</p>
+            <p className="mb-1 flex items-center justify-center text-sm uppercase tracking-wide text-gray-300">
+              <Crosshair className="mr-1" size={16} />
+              Accuracy
+            </p>
             <p className="text-3xl font-bold">{accuracy.toFixed(1)}%</p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Crosshair */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div>{getCrosshair()}</div>
       </div>
 
-      {/* Bottom HUD: Health, Weapon, and Hotbar */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+       {/* Bottom HUD: Health, Weapon, and Hotbar */}
+       <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute bottom-4 left-4 right-4 flex items-end justify-between"
+      >
         {/* Health Bar */}
         <div className="w-1/3 max-w-xs">
           <ProgressBar value={health} max={100} color={healthColor} label="Health" />
@@ -229,7 +260,7 @@ export function HUD({
           <p className="mb-1 text-sm uppercase tracking-wide text-gray-300">Current Weapon</p>
           <p className="text-xl font-bold text-blue-400">{currentWeapon}</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Player List */}
       {players && players.length > 0 && (
@@ -246,11 +277,25 @@ export function HUD({
       )}
 
       {/* Pause Overlay */}
-      {isPaused && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm">
-          <div className="animate-pulse text-6xl font-bold tracking-widest text-white">PAUSED</div>
-        </div>
-      )}
+      <AnimatePresence>
+        {isPaused && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="animate-pulse text-6xl font-bold tracking-widest text-white"
+            >
+              PAUSED
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
