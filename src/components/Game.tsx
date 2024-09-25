@@ -1,22 +1,29 @@
-'use client'
+'use client';
 
-import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { PointerLockControls, KeyboardControls, SoftShadows } from '@react-three/drei'
+import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { PointerLockControls, KeyboardControls, SoftShadows } from '@react-three/drei';
 
-import { HUD } from './ui/HUD'
-import { SettingsModal } from './ui/SettingsModal'
-import { MainMenu } from './ui/MainMenu'
-import { PostGameSummary } from './ui/PostGameSummary'
-import { PauseMenu } from './ui/PauseMenu'
-import { GameMode, GameProps, GameSettings, TimeOfDay, WeatherCondition, PlayerRanking } from '../types'
-import { useGameState } from '../hooks/useGameState'
-import { audioManager } from '../utils/audioManager'
-import CameraController from './CameraController'
-import GraphicsController from './GraphicsController'
-import ColorblindController from './ColorblindController'
-import GameControls from './GameControls'
-import SceneSetup from './SceneSetup'
+import { HUD } from './ui/HUD';
+import { SettingsModal } from './ui/SettingsModal';
+import { MainMenu } from './ui/MainMenu';
+import { PostGameSummary } from './ui/PostGameSummary';
+import { PauseMenu } from './ui/PauseMenu';
+import {
+  GameMode,
+  GameProps,
+  GameSettings,
+  TimeOfDay,
+  WeatherCondition,
+  PlayerRanking,
+} from '../types';
+import { useGameState } from '../hooks/useGameState';
+import { audioManager } from '../utils/audioManager';
+import CameraController from './CameraController';
+import GraphicsController from './GraphicsController';
+import ColorblindController from './ColorblindController';
+import GameControls from './GameControls';
+import SceneSetup from './SceneSetup';
 
 const keyboardMap = [
   { name: 'forward', keys: ['ArrowUp', 'KeyW'] },
@@ -25,16 +32,14 @@ const keyboardMap = [
   { name: 'right', keys: ['ArrowRight', 'KeyD'] },
   { name: 'jump', keys: ['Space'] },
   { name: 'quickTurn', keys: ['KeyQ'] },
-]
+];
 
 const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpdate }) => {
-  const gameState = useGameState(initialSettings, userProfile, onProfileUpdate)
-  const controlsRef = useRef<any>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const sunPosition = useMemo<[number, number, number]>(() => [100, 50, 100], [])
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  // ... (keep the rest of the component logic unchanged)
+  const gameState = useGameState(initialSettings, userProfile, onProfileUpdate);
+  const controlsRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sunPosition = useMemo<[number, number, number]>(() => [100, 50, 100], []);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const isUIOpen = useMemo(
     () =>
@@ -43,196 +48,218 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
       gameState.isSettingsOpen ||
       gameState.isGamePaused ||
       isTransitioning,
-    [gameState.showMainMenu, gameState.showPostGameSummary, gameState.isSettingsOpen, gameState.isGamePaused, isTransitioning]
-  )
+    [
+      gameState.showMainMenu,
+      gameState.showPostGameSummary,
+      gameState.isSettingsOpen,
+      gameState.isGamePaused,
+      isTransitioning,
+    ],
+  );
 
   const lockControls = useCallback(() => {
     if (controlsRef.current && !isUIOpen && gameState.isGameRunning) {
-      controlsRef.current.lock()
+      controlsRef.current.lock();
     }
-  }, [isUIOpen, gameState.isGameRunning])
+  }, [isUIOpen, gameState.isGameRunning]);
 
   const unlockControls = useCallback(() => {
     if (controlsRef.current) {
-      controlsRef.current.unlock()
+      controlsRef.current.unlock();
     }
-  }, [])
+  }, []);
 
-  const handleSettingsChange = useCallback((newSettings: Partial<GameSettings>) => {
-    gameState.handleSettingsChange(newSettings)
-    if (newSettings.volume !== undefined) {
-      audioManager.setVolume(newSettings.volume)
-    }
-  }, [gameState])
+  const handleSettingsChange = useCallback(
+    (newSettings: Partial<GameSettings>) => {
+      gameState.handleSettingsChange(newSettings);
+      if (newSettings.volume !== undefined) {
+        audioManager.setVolume(newSettings.volume);
+      }
+    },
+    [gameState],
+  );
 
-  const handleTimeOfDayChange = useCallback((newTimeOfDay: TimeOfDay) => {
-    handleSettingsChange({ timeOfDay: newTimeOfDay })
-  }, [handleSettingsChange])
+  const handleTimeOfDayChange = useCallback(
+    (newTimeOfDay: TimeOfDay) => {
+      handleSettingsChange({ timeOfDay: newTimeOfDay });
+    },
+    [handleSettingsChange],
+  );
 
-  const handleWeatherConditionChange = useCallback((newWeatherCondition: WeatherCondition) => {
-    handleSettingsChange({ weatherCondition: newWeatherCondition })
-  }, [handleSettingsChange])
+  const handleWeatherConditionChange = useCallback(
+    (newWeatherCondition: WeatherCondition) => {
+      handleSettingsChange({ weatherCondition: newWeatherCondition });
+    },
+    [handleSettingsChange],
+  );
 
-  const startCountdown = useCallback((callback: () => void) => {
-    setIsTransitioning(true)
-    gameState.setResumeCountdown(3)
-    const countdownInterval = setInterval(() => {
-      gameState.setResumeCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval)
-          setIsTransitioning(false)
-          gameState.setIsGamePaused(false)
-          callback()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }, [gameState, setIsTransitioning])
+  const startCountdown = useCallback(
+    (callback: () => void) => {
+      setIsTransitioning(true);
+      gameState.setResumeCountdown(3);
+      const countdownInterval = setInterval(() => {
+        gameState.setResumeCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            setIsTransitioning(false);
+            gameState.setIsGamePaused(false);
+            callback();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    [gameState, setIsTransitioning],
+  );
 
   const handleSettingsClose = useCallback(() => {
-    gameState.setIsSettingsOpen(false)
+    gameState.setIsSettingsOpen(false);
     if (gameState.isGameRunning && !gameState.isGamePaused) {
-      startCountdown(lockControls)
+      startCountdown(lockControls);
     }
-  }, [gameState, lockControls, startCountdown])
+  }, [gameState, lockControls, startCountdown]);
 
-  const handleStartGame = useCallback((selectedMode: GameMode) => {
-    gameState.startGame(selectedMode)
-    startCountdown(() => {
-      lockControls()
-    })
-  }, [gameState, lockControls, startCountdown])
+  const handleStartGame = useCallback(
+    (selectedMode: GameMode, isMultiplayer: boolean, npcCount: number) => {
+      gameState.startGame(selectedMode, isMultiplayer, npcCount);
+      startCountdown(() => {
+        lockControls();
+      });
+    },
+    [gameState, lockControls, startCountdown],
+  );
 
   const handlePauseToggle = useCallback(() => {
     if (gameState.isGameRunning && !isTransitioning && !gameState.isSettingsOpen) {
       if (gameState.isGamePaused) {
-        startCountdown(lockControls)
+        startCountdown(lockControls);
       } else {
-        unlockControls()
-        gameState.togglePause()
+        unlockControls();
+        gameState.togglePause();
       }
     }
-  }, [gameState, isTransitioning, lockControls, unlockControls, startCountdown])
-  
+  }, [gameState, isTransitioning, lockControls, unlockControls, startCountdown]);
+
   const handleRestart = useCallback(() => {
-    gameState.togglePause()
-    gameState.resetGameState(gameState.gameMode)
-    gameState.setIsGameRunning(true)
-    gameState.setIsGamePaused(false)
-    handleStartGame(gameState.gameMode)
-  }, [gameState, handleStartGame])
+    gameState.togglePause();
+    gameState.resetGameState(gameState.gameMode, gameState.isMultiplayer, gameState.npcCount);
+    gameState.setIsGameRunning(true);
+    gameState.setIsGamePaused(false);
+    handleStartGame(gameState.gameMode, gameState.isMultiplayer, gameState.npcCount);
+  }, [gameState, handleStartGame]);
 
   const handleQuit = useCallback(() => {
-    gameState.togglePause()
-    gameState.setShowMainMenu(true)
-    gameState.setIsGameRunning(false)
-    unlockControls()
-  }, [gameState, unlockControls])
+    gameState.togglePause();
+    gameState.setShowMainMenu(true);
+    gameState.setIsGameRunning(false);
+    unlockControls();
+  }, [gameState, unlockControls]);
 
-  const handleNPCShoot = useCallback((npcId: string) => {
-    // Implement NPC shooting logic here
-    console.log(`NPC ${npcId} is shooting`)
-    // You can add more complex logic here, such as checking if the NPC can hit the player
-    // and applying damage to the player if hit
-    // For example:
-    // const hitChance = 0.3 // 30% chance to hit
-    // if (Math.random() < hitChance) {
-    //   const damage = 10
-    //   gameState.handlePlayerDamage(damage)
-    // }
-  }, [])
+  const handleNPCShoot = useCallback(
+    (npcId: string) => {
+      const hitChance = gameState.settings.npcAccuracy;
+      if (Math.random() < hitChance) {
+        const damage = 10; // You might want to make this dynamic based on NPC weapon or difficulty
+        gameState.handlePlayerDamage(damage);
+      }
+    },
+    [gameState],
+  );
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        handlePauseToggle()
+        handlePauseToggle();
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyPress)
+    window.addEventListener('keydown', handleKeyPress);
     return () => {
-      window.removeEventListener('keydown', handleKeyPress)
-    }
-  }, [handlePauseToggle])
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [handlePauseToggle]);
 
   useEffect(() => {
     if (gameState.isGameRunning && !isUIOpen) {
-      lockControls()
+      lockControls();
     } else {
-      unlockControls()
+      unlockControls();
     }
-  }, [gameState.isGameRunning, isUIOpen, lockControls, unlockControls])
+  }, [gameState.isGameRunning, isUIOpen, lockControls, unlockControls]);
 
   useEffect(() => {
     const handlePointerLockChange = () => {
       if (document.pointerLockElement === null && gameState.isGameRunning && !isUIOpen) {
-        handlePauseToggle()
+        handlePauseToggle();
       }
-    }
+    };
 
-    document.addEventListener('pointerlockchange', handlePointerLockChange)
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
     return () => {
-      document.removeEventListener('pointerlockchange', handlePointerLockChange)
-    }
-  }, [gameState, isUIOpen, handlePauseToggle])
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+    };
+  }, [gameState, isUIOpen, handlePauseToggle]);
 
   useEffect(() => {
     if (canvasRef.current) {
-      const canvas = canvasRef.current
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
-      canvas.style.position = 'absolute'
-      canvas.style.top = '0'
-      canvas.style.left = '0'
+      const canvas = canvasRef.current;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.position = 'absolute';
+      canvas.style.top = '0';
+      canvas.style.left = '0';
     }
-  }, [])
+  }, []);
 
-  const physicsGravity = useMemo<[number, number, number]>(() =>
-    [0, -gameState.settings.gravity, 0],
-    [gameState.settings.gravity]
-  )
+  const physicsGravity = useMemo<[number, number, number]>(
+    () => [0, -gameState.settings.gravity, 0],
+    [gameState.settings.gravity],
+  );
 
   const handleCanvasClick = useCallback(() => {
     if (gameState.isGameRunning && !isUIOpen) {
-      lockControls()
+      lockControls();
     }
-  }, [gameState.isGameRunning, isUIOpen, lockControls])
+  }, [gameState.isGameRunning, isUIOpen, lockControls]);
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
+    <div className="relative h-screen w-screen overflow-hidden">
       <KeyboardControls map={keyboardMap}>
-        <Canvas 
-          ref={canvasRef} 
-          shadows 
-          camera={{ fov: gameState.settings.fov, position: [0, 1.6, 0], near: 0.1, far: 1000 }}
+        <Canvas
+          ref={canvasRef}
+          shadows
+          camera={{
+            fov: gameState.settings.fov,
+            position: [0, 1.6, 0],
+            near: 0.1,
+            far: 1000,
+          }}
           onClick={handleCanvasClick}
         >
-          {/* ... (keep the rest of the Canvas content unchanged) */}
           <CameraController fov={gameState.settings.fov} />
           <GraphicsController quality={gameState.settings.graphicsQuality} />
           <ColorblindController mode={gameState.settings.colorblindMode} />
           <SoftShadows size={10} samples={gameState.settings.graphicsQuality * 5} focus={0.5} />
-          <SceneSetup 
-            sunPosition={sunPosition} 
+          <SceneSetup
+            sunPosition={sunPosition}
             graphicsQuality={gameState.settings.graphicsQuality}
             timeOfDay={gameState.settings.timeOfDay}
             weatherCondition={gameState.settings.weatherCondition}
           />
           {gameState.isGameRunning && (
-            <GameControls 
-              gameState={gameState} 
-              physicsGravity={[0, -gameState.settings.gravity, 0]} 
-              isGamePaused={gameState.isGamePaused} 
-              isSettingsOpen={gameState.isSettingsOpen} 
-              isTransitioning={isTransitioning} 
+            <GameControls
+              gameState={gameState}
+              physicsGravity={physicsGravity}
+              isGamePaused={gameState.isGamePaused}
+              isSettingsOpen={gameState.isSettingsOpen}
+              isTransitioning={isTransitioning}
               npcs={gameState.npcs}
               onNPCHit={gameState.handleNPCHit}
               onNPCShoot={handleNPCShoot}
             />
           )}
-          {gameState.isGameRunning && !isUIOpen && (
-            <PointerLockControls ref={controlsRef} />
-          )}
+          {gameState.isGameRunning && !isUIOpen && <PointerLockControls ref={controlsRef} />}
         </Canvas>
       </KeyboardControls>
 
@@ -243,6 +270,8 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
             onSettingsOpen={() => gameState.setIsSettingsOpen(true)}
             highScore={userProfile?.highScore || 0}
             onJoinLobby={() => gameState.setIsShowLobby(true)}
+            npcCount={gameState.npcCount}
+            setNpcCount={gameState.setNpcCount}
           />
         </div>
       )}
@@ -252,9 +281,12 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
           <PostGameSummary
             score={gameState.score}
             accuracy={gameState.accuracy}
-            onRestart={() => handleStartGame(gameState.gameMode)}
+            onRestart={() =>
+              handleStartGame(gameState.gameMode, gameState.isMultiplayer, gameState.npcCount)
+            }
             onExit={() => gameState.setShowMainMenu(true)}
-            playerRankings={gameState.playerRankings as PlayerRanking[]}
+            playerRankings={gameState.playerRankings}
+            gameMode={gameState.gameMode}
           />
         </div>
       )}
@@ -273,26 +305,26 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
             onWeaponSwitch={gameState.handleWeaponSwitch}
             cycleWeapon={gameState.cycleWeapon}
             npcs={gameState.npcs}
-            players={gameState.playerRankings as PlayerRanking[]}
+            players={gameState.playerRankings}
+            gameMode={gameState.gameMode}
           />
         </div>
       )}
 
-      {/* ... (keep the rest of the component JSX unchanged) */}
       {gameState.isGamePaused && !gameState.isSettingsOpen && !isTransitioning && (
         <PauseMenu
           onResume={handlePauseToggle}
           onRestart={handleRestart}
           onQuit={handleQuit}
           onSettings={() => {
-            gameState.setIsSettingsOpen(true)
-            unlockControls()
+            gameState.setIsSettingsOpen(true);
+            unlockControls();
           }}
         />
       )}
 
       {(gameState.resumeCountdown > 0 || isTransitioning) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-6xl font-bold">
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-6xl font-bold text-white">
           {gameState.resumeCountdown > 0 ? gameState.resumeCountdown : 'Applying settings...'}
         </div>
       )}
@@ -306,7 +338,7 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
         onProfileUpdate={onProfileUpdate}
       />
     </div>
-  )
-}
+  );
+};
 
-export default Game
+export default Game;

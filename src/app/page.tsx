@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { GameSettings, UserProfile } from '../types'
-import Game from '@/components/Game'
-import { loadUserProfile } from '@/utils/profileUtils'
+import { useState, useEffect } from 'react';
+import { GameSettings, UserProfile } from '../types';
+import Game from '@/components/Game';
+import { loadUserProfile } from '@/utils/profileUtils';
 
 export default function Home() {
   const defaultSettings: GameSettings = {
@@ -25,25 +25,29 @@ export default function Home() {
     weatherCondition: 'clear',
     npcCount: 0,
     npcDifficulty: 'medium',
-    npcShootBack: false
-  }
+    npcShootBack: false,
+    npcMovementSpeed: 3,
+    npcAccuracy: 0.5,
+    npcReactionTime: 1000,
+    npcTeamMode: false,
+  };
 
-  const [gameSettings, setGameSettings] = useState<GameSettings>(defaultSettings)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [gameSettings, setGameSettings] = useState<GameSettings>(defaultSettings);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    const profile = loadUserProfile()
+    const profile = loadUserProfile();
     if (profile) {
-      setUserProfile(profile)
-      setGameSettings(profile.settings)
+      setUserProfile(profile);
+      setGameSettings(profile.settings);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (userProfile) {
-      setGameSettings(userProfile.settings)
+      setGameSettings(userProfile.settings);
     }
-  }, [userProfile])
+  }, [userProfile]);
 
   return (
     <div className="relative min-h-screen w-screen overflow-hidden">
@@ -56,5 +60,5 @@ export default function Home() {
         />
       </div>
     </div>
-  )
+  );
 }

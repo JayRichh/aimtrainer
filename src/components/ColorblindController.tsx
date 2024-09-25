@@ -17,14 +17,15 @@ const ColorblindController: React.FC<ColorblindControllerProps> = ({ mode }) => 
   };
 
   useEffect(() => {
-    const adjustment = colorAdjustments[mode as keyof typeof colorAdjustments] || colorAdjustments.none;
+    const adjustment =
+      colorAdjustments[mode as keyof typeof colorAdjustments] || colorAdjustments.none;
 
     scene.traverse((object) => {
       if (object instanceof THREE.Mesh && object.material instanceof THREE.MeshStandardMaterial) {
         object.material.color.setRGB(
           object.material.color.r * adjustment.r,
           object.material.color.g * adjustment.g,
-          object.material.color.b * adjustment.b
+          object.material.color.b * adjustment.b,
         );
         object.material.needsUpdate = true;
       }

@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useMemo } from 'react'
-import { useFrame, useThree, extend, ThreeEvent, ReactThreeFiber } from '@react-three/fiber'
-import * as THREE from 'three'
-import { TargetProps } from '../types'
-import { shaderMaterial } from '@react-three/drei'
+import React, { useRef, useMemo, useState, useEffect } from 'react';
+import { useFrame, useThree, extend, ThreeEvent, ReactThreeFiber } from '@react-three/fiber';
+import * as THREE from 'three';
+import { TargetProps } from '../types';
+import { shaderMaterial } from '@react-three/drei';
+import { createExplosion } from './ExplosionEffect';
 
 class GlowMaterial extends THREE.ShaderMaterial {
   constructor() {
@@ -10,7 +11,7 @@ class GlowMaterial extends THREE.ShaderMaterial {
       uniforms: {
         color: { value: new THREE.Color(0xffffff) },
         time: { value: 0 },
-        fadeIn: { value: 0 }
+        fadeIn: { value: 0 },
       },
       vertexShader: `
         varying vec3 vNormal;
@@ -31,7 +32,7 @@ class GlowMaterial extends THREE.ShaderMaterial {
           float pulse = 0.5 + 0.5 * sin(time * 2.0 + vUv.x * 10.0 + vUv.y * 10.0);
           vec3 glow = color * intensity * (0.5 + 0.5 * pulse);
           gl_FragColor = vec4(glow, 1.0) * fadeIn;
-        }`
+        }`,
     });
   }
 
@@ -40,11 +41,10 @@ class GlowMaterial extends THREE.ShaderMaterial {
   }
 
   set color(value) {
-    this.uniforms.color.value.set(value);
+    this.uniforms.color.value = value;
   }
 }
 
-// Register the material with react-three-fiber
 extend({ GlowMaterial });
 
 declare module '@react-three/fiber' {
@@ -56,117 +56,99 @@ declare module '@react-three/fiber' {
 const getColorForMode = (mode: string): THREE.Color => {
   switch (mode) {
     case 'protanopia':
-      return new THREE.Color(0x0080FF) // Blue
+      return new THREE.Color(0x0080ff);
     case 'deuteranopia':
-      return new THREE.Color(0xFFFF00) // Yellow
+      return new THREE.Color(0xffff00);
     case 'tritanopia':
-      return new THREE.Color(0xFF00FF) // Magenta
+      return new THREE.Color(0xff00ff);
     default:
-      return new THREE.Color(0xFF0000) // Red (default)
+      return new THREE.Color(0xff0000);
   }
-}
+};
 
 export const Target: React.FC<TargetProps> = ({ data, settings, onHit }) => {
-  const groupRef = useRef<THREE.Group>(null)
-  const glowRef = useRef<any>()
-  const healthBarRef = useRef<THREE.Mesh>(null)
-  const { camera } = useThree()
-  const [fadeIn, setFadeIn] = React.useState(0)
-  const [isHit, setIsHit] = React.useState(false)
+  const { scene, camera } = useThree();
+  const groupRef = useRef<THREE.Group>(null);
+  const glowRef = useRef<GlowMaterial>(null);
+  const healthBarRef = useRef<THREE.Mesh>(null);
+  const [fadeIn, setFadeIn] = useState(0);
+  const [popAnimation, setPopAnimation] = useState(0);
+  
+  const targetColor = useMemo(() => getColorForMode(settings.colorblindMode), [settings.colorblindMode]);
+  const healthBarMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: 'limegreen' }), []);
 
-  const targetColor = useMemo(() => getColorForMode(settings.colorblindMode), [settings.colorblindMode])
-  const healthBarMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: 'limegreen' }), [])
+  useEffect(() => {
+    if (data.isPopping) {
+      setPopAnimation(1);
+    }
+  }, [data.isPopping]);
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      const time = state.clock.getElapsedTime()
+      const time = state.clock.getElapsedTime();
+      groupRef.current.lookAt(camera.position);
 
-      // Ensure the target always faces the camera
-      groupRef.current.lookAt(camera.position)
-
-      // Update shader time and fade-in
-      if (glowRef.current && glowRef.current.uniforms) {
-        glowRef.current.uniforms.time.value = time
-        glowRef.current.uniforms.fadeIn.value = fadeIn
+      if (glowRef.current) {
+        glowRef.current.uniforms.time.value = time;
+        glowRef.current.uniforms.fadeIn.value = fadeIn;
       }
 
-      // Update health bar
       if (healthBarRef.current) {
-        const healthPercentage = data.health / data.maxHealth
-        healthBarRef.current.scale.x = healthPercentage
-        healthBarRef.current.position.x = (healthPercentage - 1) * data.size * 0.25
-        healthBarMaterial.color.setHSL(
-          healthPercentage * 0.3, // Hue: 0 (red) to 0.3 (green)
-          1, // Saturation
-          0.5 // Lightness
-        )
+        const healthPercentage = data.health / data.maxHealth;
+        healthBarRef.current.scale.x = healthPercentage;
+        healthBarRef.current.position.x = (healthPercentage - 1) * data.size * 0.25;
+        healthBarMaterial.color.setHSL(healthPercentage * 0.3, 1, 0.5);
       }
 
-      // Increment fade-in
-      setFadeIn(prev => Math.min(prev + delta, 1))
+      setFadeIn((prev) => Math.min(prev + delta, 1));
 
-      // Handle hit animation
-      if (isHit) {
-        groupRef.current.scale.setScalar(1 + Math.sin(time * 20) * 0.05)
-        setTimeout(() => setIsHit(false), 200)
+      if (popAnimation > 0) {
+        setPopAnimation((prev) => Math.max(0, prev - delta * 5));
+        const scale = 1 + Math.sin(popAnimation * Math.PI) * 0.3;
+        groupRef.current.scale.setScalar(scale);
       } else {
-        groupRef.current.scale.setScalar(1)
+        groupRef.current.scale.setScalar(1);
       }
     }
-  })
+  });
 
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation()
-    setIsHit(true)
-    onHit(data.id, 10) // Assuming 10 points per hit, adjust as needed
-  }
+  const handleHit = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation();
+    setPopAnimation(1);
+    const damage = 100; // Increase damage to break targets more quickly
+    onHit(data.id, damage);
+  };
 
   return (
     <group ref={groupRef} position={data.position}>
-      {/* Glow effect */}
       <mesh>
         <planeGeometry args={[data.size * 1.2, data.size * 1.2]} />
         <glowMaterial ref={glowRef} transparent color={targetColor} />
       </mesh>
-
-      {/* Target face */}
-      <mesh castShadow receiveShadow onClick={handleClick}>
+      <mesh castShadow receiveShadow onClick={handleHit}>
         <circleGeometry args={[data.size / 2, 32]} />
         <meshStandardMaterial color={targetColor} side={THREE.DoubleSide} />
       </mesh>
-      
-      {/* Outer ring */}
-      <mesh castShadow receiveShadow position={[0, 0, 0.01]} onClick={handleClick}>
-        <ringGeometry args={[data.size / 2 * 0.8, data.size / 2, 32]} />
+      <mesh castShadow receiveShadow position={[0, 0, 0.01]} onClick={handleHit}>
+        <ringGeometry args={[(data.size / 2) * 0.8, data.size / 2, 32]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
-      
-      {/* Inner circle */}
-      <mesh castShadow receiveShadow position={[0, 0, 0.02]} onClick={handleClick}>
-        <circleGeometry args={[data.size / 2 * 0.4, 32]} />
+      <mesh castShadow receiveShadow position={[0, 0, 0.02]} onClick={handleHit}>
+        <circleGeometry args={[(data.size / 2) * 0.4, 32]} />
         <meshStandardMaterial color={targetColor} side={THREE.DoubleSide} />
       </mesh>
-      
-      {/* Enhanced stand */}
-      <mesh position={[0, -data.size * 0.75, -0.1]} castShadow receiveShadow>
+      <mesh position={[0, data.size * 0.75, -0.1]} castShadow receiveShadow>
         <cylinderGeometry args={[data.size * 0.05, data.size * 0.1, data.size * 1.5, 8]} />
         <meshStandardMaterial color="gray" metalness={0.6} roughness={0.2} />
       </mesh>
-
-      {/* Health bar background */}
       <mesh position={[0, data.size * 0.6, 0.1]}>
         <planeGeometry args={[data.size * 0.5, data.size * 0.05]} />
         <meshBasicMaterial color="black" transparent opacity={0.5} />
       </mesh>
-
-      {/* Health bar fill */}
-      <mesh 
-        ref={healthBarRef}
-        position={[0, data.size * 0.6, 0.11]}
-      >
+      <mesh ref={healthBarRef} position={[0, data.size * 0.6, 0.11]}>
         <planeGeometry args={[data.size * 0.5, data.size * 0.05]} />
         <primitive object={healthBarMaterial} />
       </mesh>
     </group>
-  )
-}
+  );
+};

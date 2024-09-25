@@ -14,7 +14,6 @@ class AudioManager {
     //   hit: '/sounds/hit.wav',
     //   // backgroundMusic: '/sounds/itstime.mp3'
     // };
-
     // for (const [name, path] of Object.entries(soundFiles)) {
     //   await this.loadSound(name, path);
     // }
@@ -50,7 +49,7 @@ class AudioManager {
       this.getAudioContext().decodeAudioData(
         arrayBuffer,
         (buffer) => resolve(buffer),
-        (error) => reject(error)
+        (error) => reject(error),
       );
     });
   }
@@ -79,11 +78,14 @@ class AudioManager {
 
   resumeAudioContext() {
     if (this.context && this.context.state === 'suspended') {
-      this.context.resume().then(() => {
-        console.log('AudioContext resumed successfully');
-      }).catch(error => {
-        console.error('Failed to resume AudioContext:', error);
-      });
+      this.context
+        .resume()
+        .then(() => {
+          console.log('AudioContext resumed successfully');
+        })
+        .catch((error) => {
+          console.error('Failed to resume AudioContext:', error);
+        });
     }
   }
 }

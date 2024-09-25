@@ -3,7 +3,7 @@ import { Physics } from '@react-three/cannon';
 import { Ground } from './Ground';
 import { Character } from './Character';
 import { WeaponSystem } from '@/systems/WeaponSystem';
-import { WeaponSystemProps, WeaponType, NPCData } from '../types'
+import { WeaponSystemProps, WeaponType, NPCData } from '../types';
 import { Target } from './Target';
 import NPC from './NPC';
 import { useGameState } from '../hooks/useGameState';
@@ -55,7 +55,7 @@ const GameControls: React.FC<GameControlsProps> = ({
           settings={gameState.settings}
           onHit={onNPCHit}
           onShoot={onNPCShoot}
-          playerPositions={{player: gameState.playerPosition}}
+          playerPositions={{ player: gameState.playerPosition }}
         />
       ))}
       <WeaponSystem
@@ -69,17 +69,19 @@ const GameControls: React.FC<GameControlsProps> = ({
         isGamePaused={isPaused}
         npcs={npcs}
         setNPCs={gameState.setNPCs}
-        players={[{
-          id: 'player',
-          username: 'Player',
-          position: gameState.playerPosition,
-          rotation: gameState.playerRotation,
-          health: gameState.playerHealth,
-          maxHealth: gameState.playerMaxHealth,
-          weapon: gameState.currentWeapon,
-          score: gameState.score
-        }]}
-        setPlayers={undefined} // We don't need to set players in single-player mode
+        players={[
+          {
+            id: 'player',
+            username: 'Player',
+            position: gameState.playerPosition,
+            rotation: gameState.playerRotation,
+            health: gameState.playerHealth,
+            maxHealth: gameState.playerMaxHealth,
+            weapon: gameState.currentWeapon,
+            score: gameState.score,
+          },
+        ]}
+        setPlayers={undefined}
       />
     </Physics>
   );

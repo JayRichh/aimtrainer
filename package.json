@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@react-three/cannon": "^6.6.0",
@@ -17,10 +18,14 @@
     "howler": "^2.2.4",
     "lucide-react": "^0.445.0",
     "next": "14.2.13",
+    "next-seo": "^6.6.0",
     "postprocessing": "^6.36.2",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.8",
     "react": "^18",
     "react-color": "^2.19.3",
     "react-dom": "^18",
+    "tailwind-scrollbar": "^3.1.0",
     "three": "^0.168.0"
   },
   "devDependencies": {

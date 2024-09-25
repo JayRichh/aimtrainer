@@ -1,19 +1,19 @@
-import { UserProfile } from '../types'
+import { UserProfile } from '../types';
 
 export function loadUserProfile(): UserProfile | null {
   if (typeof window !== 'undefined') {
-    const profile = localStorage.getItem('userProfile')
+    const profile = localStorage.getItem('userProfile');
     if (profile) {
-      return JSON.parse(profile)
+      return JSON.parse(profile);
     }
   }
-  return null
+  return null;
 }
 
 export function saveUserProfile(profile: UserProfile) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('userProfile', JSON.stringify(profile))
+    localStorage.setItem('userProfile', JSON.stringify(profile));
   }
 }
 
-export default { loadUserProfile, saveUserProfile }
+export default { loadUserProfile, saveUserProfile };

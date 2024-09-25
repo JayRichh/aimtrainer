@@ -1,4 +1,6 @@
 import React from 'react';
+import { Play, RotateCcw, Settings, LogOut } from 'lucide-react';
+import Image from 'next/image';
 
 interface PauseMenuProps {
   onResume: () => void;
@@ -7,38 +9,51 @@ interface PauseMenuProps {
   onSettings: () => void;
 }
 
-export const PauseMenu: React.FC<PauseMenuProps> = ({ onResume, onRestart, onQuit, onSettings }) => {
+export const PauseMenu: React.FC<PauseMenuProps> = ({
+  onResume,
+  onRestart,
+  onQuit,
+  onSettings,
+}) => {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full">
-        <h2 className="text-4xl font-bold mb-8 text-center text-white">Game Paused</h2>
+      <div className="w-full max-w-md rounded-xl bg-gray-800 p-8 text-white shadow-2xl">
+        <div className="mb-6 flex justify-center">
+          <Image
+            src="/aimtrain-biglogo.png"
+            alt="Aim Trainer Logo"
+            className="inverted-logo h-auto w-full max-w-[200px]"
+            width={200}
+            height={100}
+          />
+        </div>
+
+        <h2 className="mb-8 text-center text-4xl font-bold text-yellow-400">Game Paused</h2>
+
         <div className="space-y-4">
-          <button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            onClick={onResume}
-          >
-            Resume
-          </button>
-          <button
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-            onClick={onRestart}
-          >
-            Restart
-          </button>
-          <button
-            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
-            onClick={onSettings}
-          >
-            Settings
-          </button>
-          <button
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-            onClick={onQuit}
-          >
-            Quit
-          </button>
+          <PauseMenuButton onClick={onResume} icon={Play} color="blue" label="Resume" />
+          <PauseMenuButton onClick={onRestart} icon={RotateCcw} color="green" label="Restart" />
+          <PauseMenuButton onClick={onSettings} icon={Settings} color="yellow" label="Settings" />
+          <PauseMenuButton onClick={onQuit} icon={LogOut} color="red" label="Quit" />
         </div>
       </div>
     </div>
   );
 };
+
+interface PauseMenuButtonProps {
+  onClick: () => void;
+  icon: React.ElementType;
+  color: string;
+  label: string;
+}
+
+const PauseMenuButton: React.FC<PauseMenuButtonProps> = ({ onClick, icon: Icon, color, label }) => (
+  <button
+    className={`w-full bg-${color}-600 hover:bg-${color}-700 transform rounded-lg px-6 py-3 font-bold text-white transition duration-200 ease-in-out hover:scale-105 focus:outline-none focus:ring-2 focus:ring-${color}-500 flex items-center justify-center focus:ring-opacity-50`}
+    onClick={onClick}
+  >
+    <Icon className="mr-3" size={24} />
+    <span className="text-lg">{label}</span>
+  </button>
+);

@@ -1,44 +1,68 @@
 import { useState, useCallback, useEffect } from 'react';
-import { GameSettings, GameMode, UserProfile, TargetData, WeaponType, TimeOfDay, WeatherCondition, Hotkey, HotbarSlot, NPCData } from '../types';
-import { generateRandomTargets, updateTargetPositions, regenerateTarget } from '../utils/targetUtils';
+import {
+  GameSettings,
+  GameMode,
+  UserProfile,
+  TargetData,
+  WeaponType,
+  TimeOfDay,
+  WeatherCondition,
+  Hotkey,
+  HotbarSlot,
+  NPCData,
+  PlayerRanking,
+} from '../types';
+import {
+  generateRandomTargets,
+  updateTargetPositions,
+  regenerateTarget,
+} from '../utils/targetUtils';
 import { hotbarConfig } from '../config/hotbarConfig';
 
-// ... (keep the existing helper functions)
-const generateRandomNPCs = (count: number, settings: GameSettings): NPCData[] => {
+const generateRandomNPCs = (
+  count: number,
+  settings: GameSettings,
+  gameMode: GameMode,
+  isMultiplayer: boolean,
+): NPCData[] => {
+  if (isMultiplayer) {
+    return []; // No bots in multiplayer mode
+  }
+
   return Array.from({ length: count }, (_, index) => ({
     id: `npc-${index}`,
     position: [Math.random() * 100 - 50, 0, Math.random() * 100 - 50],
-    rotation: [0, Math.random() * 360, 0], // Example rotation, adjust as needed
+    rotation: [0, Math.random() * 360, 0],
     health: 100,
     maxHealth: 100,
-    weapon: "Pistol",
-    state: "idle",
-    speed: 1,
+    weapon: 'Pistol',
+    state: 'idle',
+    speed: settings.npcMovementSpeed,
     lastShootTime: Date.now(),
-    shootInterval: 1000,
+    shootInterval: 1000 / settings.npcAccuracy,
     movementTarget: [Math.random() * 100 - 50, 0, Math.random() * 100 - 50],
-}));
+    team: gameMode === 'teamDeathmatch' ? (Math.random() > 0.5 ? 'red' : 'blue') : undefined,
+    accuracy: settings.npcAccuracy,
+    reactionTime: settings.npcReactionTime,
+  }));
 };
 
 // Define fetchPlayerRankings if not imported
-async function fetchPlayerRankings(): Promise<UserProfile[]> {
+async function fetchPlayerRankings(): Promise<PlayerRanking[]> {
   // Fetch logic here
   // Example mock implementation:
   return [
-      { id: '1', username: 'player1', highScore: 1000, settings: {} as GameSettings },
-      { id: '2', username: 'player2', highScore: 900, settings: {} as GameSettings },
-      // Add more mock user profiles
+    { id: '1', username: 'player1', score: 1000, kills: 10 },
+    { id: '2', username: 'player2', score: 900, kills: 8 },
+    // Add more mock user profiles
   ];
 }
 
-const transformRankings = (profiles: UserProfile[]) => {
-  return profiles.map(profile => ({
-      id: profile.id,
-      username: profile.username,
-      score: profile.highScore, // Use highScore as score
-  }));
-};
-export const useGameState = (initialSettings: GameSettings, userProfile: UserProfile | null, onProfileUpdate: (profile: UserProfile) => void) => {
+export const useGameState = (
+  initialSettings: GameSettings,
+  userProfile: UserProfile | null,
+  onProfileUpdate: (profile: UserProfile) => void,
+) => {
   const [settings, setSettings] = useState<GameSettings>(initialSettings);
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('Pistol');
   const [hotbar, setHotbar] = useState<HotbarSlot[]>(hotbarConfig);
@@ -57,50 +81,103 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
   const [hits, setHits] = useState(0);
   const [resumeCountdown, setResumeCountdown] = useState(0);
   const [isShowLobby, setIsShowLobby] = useState(false);
-  const [playerRankings, setPlayerRankings] = useState<{ id: string, username: string, score: number }[]>([]);  // Adjusted type
-
+  const [playerRankings, setPlayerRankings] = useState<PlayerRanking[]>([]);
+  const [isMultiplayer, setIsMultiplayer] = useState(false);
+  const [npcCount, setNpcCount] = useState(0);
 
   const [playerPosition, setPlayerPosition] = useState<[number, number, number]>([0, 1.6, 0]);
   const [playerRotation, setPlayerRotation] = useState<[number, number, number]>([0, 0, 0]);
   const [playerHealth, setPlayerHealth] = useState(100);
   const [playerMaxHealth] = useState(100);
+  const [playerKills, setPlayerKills] = useState(0);
+  const [playerTeam, setPlayerTeam] = useState<'red' | 'blue' | undefined>(undefined);
 
-  const handleWeaponSwitch = useCallback((key: Hotkey) => {
-    const slot = hotbar.find(h => h.key === key);
-    if (slot) {
-      setCurrentWeapon(slot.weapon);
-    }
-  }, [hotbar]);
+  const handleWeaponSwitch = useCallback(
+    (key: Hotkey) => {
+      const slot = hotbar.find((h) => h.key === key);
+      if (slot) {
+        setCurrentWeapon(slot.weapon);
+      }
+    },
+    [hotbar],
+  );
 
-  const cycleWeapon = useCallback((direction: 'next' | 'prev') => {
-    const currentIndex = hotbar.findIndex(slot => slot.weapon === currentWeapon);
-    let newIndex;
-    if (direction === 'next') {
-      newIndex = (currentIndex + 1) % hotbar.length;
-    } else {
-      newIndex = (currentIndex - 1 + hotbar.length) % hotbar.length;
-    }
-    setCurrentWeapon(hotbar[newIndex].weapon);
-  }, [hotbar, currentWeapon]);
+  const cycleWeapon = useCallback(
+    (direction: 'next' | 'prev') => {
+      const currentIndex = hotbar.findIndex((slot) => slot.weapon === currentWeapon);
+      let newIndex;
+      if (direction === 'next') {
+        newIndex = (currentIndex + 1) % hotbar.length;
+      } else {
+        newIndex = (currentIndex - 1 + hotbar.length) % hotbar.length;
+      }
+      setCurrentWeapon(hotbar[newIndex].weapon);
+    },
+    [hotbar, currentWeapon],
+  );
 
-  const resetGameState = useCallback((selectedMode: GameMode) => {
-    setGameMode(selectedMode);
-    setScore(0);
-    setAccuracy(100);
-    setTimeLeft(selectedMode === 'endurance' ? Infinity : 60);
-    setShotsFired(0);
-    setHits(0);
-    setTargets(generateRandomTargets(settings, 10));
-    setNPCs(generateRandomNPCs(settings.npcCount, settings));
-  }, [settings]);
+  const resetGameState = useCallback(
+    (selectedMode: GameMode, isMultiplayer: boolean, npcCount: number) => {
+      setGameMode(selectedMode);
+      setScore(0);
+      setAccuracy(100);
+      setShotsFired(0);
+      setHits(0);
+      setPlayerHealth(100);
+      setPlayerKills(0);
+      setIsMultiplayer(isMultiplayer);
+      setNpcCount(npcCount);
 
-  const startGame = useCallback((selectedMode: GameMode) => {
-    resetGameState(selectedMode);
-    setIsGameRunning(true);
-    setIsGamePaused(false);
-    setShowMainMenu(false);
-    setShowPostGameSummary(false);
-  }, [resetGameState]);
+      switch (selectedMode) {
+        case 'timed':
+          setTimeLeft(60);
+          setTargets(generateRandomTargets(settings, 10));
+          setNPCs([]);
+          setPlayerTeam(undefined);
+          break;
+        case 'endurance':
+          setTimeLeft(Infinity);
+          setTargets(generateRandomTargets(settings, 10));
+          setNPCs([]);
+          setPlayerTeam(undefined);
+          break;
+        case 'precision':
+          setTimeLeft(60);
+          setTargets(generateRandomTargets(settings, 5));
+          setNPCs([]);
+          setPlayerTeam(undefined);
+          break;
+        case 'deathmatch':
+          setTimeLeft(300); // 5 minutes for deathmatch modes
+          setTargets([]);
+          setNPCs(generateRandomNPCs(npcCount, settings, selectedMode, isMultiplayer));
+
+          setPlayerTeam(undefined);
+          break;
+        case 'teamDeathmatch':
+          setTimeLeft(300); // 5 minutes for deathmatch modes
+          setTargets([]);
+          setNPCs(generateRandomNPCs(npcCount, settings, selectedMode, isMultiplayer));
+
+          setPlayerTeam(Math.random() > 0.5 ? 'red' : 'blue');
+          break;
+        default:
+          console.error('Unknown game mode:', selectedMode);
+      }
+    },
+    [settings],
+  );
+
+  const startGame = useCallback(
+    (selectedMode: GameMode, isMultiplayer: boolean, npcCount: number) => {
+      resetGameState(selectedMode, isMultiplayer, npcCount);
+      setIsGameRunning(true);
+      setIsGamePaused(false);
+      setShowMainMenu(false);
+      setShowPostGameSummary(false);
+    },
+    [resetGameState],
+  );
 
   const togglePause = useCallback(() => {
     if (isGameRunning) {
@@ -115,10 +192,8 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
   const openLobby = useCallback(async () => {
     setIsShowLobby(true);
     const fetchedRankings = await fetchPlayerRankings();
-    const transformedRankings = transformRankings(fetchedRankings);
-    setPlayerRankings(transformedRankings);
+    setPlayerRankings(fetchedRankings);
   }, []);
-  
 
   const endGame = useCallback(() => {
     setIsGameRunning(false);
@@ -140,15 +215,30 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     }));
   }, []);
 
-  const handleTargetHit = useCallback((targetId: string, hitScore: number) => {
-    setScore((prevScore) => prevScore + Math.floor(hitScore));
-    setHits((prevHits) => prevHits + 1);
-    setTargets((prevTargets) => {
-      const newTargets = prevTargets.filter((t) => t.id !== targetId);
-      return [...newTargets, regenerateTarget(settings)];
-    });
-  }, [settings]);
-
+  const handleTargetHit = useCallback(
+    (targetId: string, hitScore: number) => {
+      setTargets((prevTargets) => {
+        return prevTargets.map((target) => {
+          if (target.id === targetId) {
+            const newHealth = Math.max(0, target.health - hitScore);
+            setScore((prevScore) => prevScore + Math.floor(hitScore));
+            setHits((prevHits) => prevHits + 1);
+  
+            if (newHealth === 0) {
+              // Target destroyed, generate a new one
+              return regenerateTarget(settings);
+            } else {
+              // Target hit but not destroyed, trigger pop animation
+              return { ...target, health: newHealth, isPopping: true };
+            }
+          }
+          return target;
+        });
+      });
+    },
+    [settings]
+  );
+  
   const handleNPCHit = useCallback((npcId: string, hitScore: number) => {
     setScore((prevScore) => prevScore + Math.floor(hitScore));
     setHits((prevHits) => prevHits + 1);
@@ -156,6 +246,9 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
       return prevNPCs.map((npc) => {
         if (npc.id === npcId) {
           const newHealth = Math.max(0, npc.health - hitScore);
+          if (newHealth === 0) {
+            setPlayerKills((prevKills) => prevKills + 1);
+          }
           return { ...npc, health: newHealth };
         }
         return npc;
@@ -167,13 +260,23 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     setShotsFired((prev) => prev + 1);
   }, []);
 
-  const setTimeOfDay = useCallback((newTimeOfDay: TimeOfDay) => {
-    handleSettingsChange({ timeOfDay: newTimeOfDay });
-  }, [handleSettingsChange]);
+  const setTimeOfDay = useCallback(
+    (newTimeOfDay: TimeOfDay) => {
+      handleSettingsChange({ timeOfDay: newTimeOfDay });
+    },
+    [handleSettingsChange],
+  );
 
-  const setWeatherCondition = useCallback((newWeatherCondition: WeatherCondition) => {
-    handleSettingsChange({ weatherCondition: newWeatherCondition });
-  }, [handleSettingsChange]);
+  const setWeatherCondition = useCallback(
+    (newWeatherCondition: WeatherCondition) => {
+      handleSettingsChange({ weatherCondition: newWeatherCondition });
+    },
+    [handleSettingsChange],
+  );
+
+  const handlePlayerDamage = useCallback((damage: number) => {
+    setPlayerHealth((prevHealth) => Math.max(0, prevHealth - damage));
+  }, []);
 
   useEffect(() => {
     if (shotsFired > 0) {
@@ -182,7 +285,7 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
   }, [shotsFired, hits]);
 
   useEffect(() => {
-    if (isGameRunning && !isGamePaused && gameMode === 'timed') {
+    if (isGameRunning && !isGamePaused && gameMode !== 'endurance') {
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -201,16 +304,17 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
   useEffect(() => {
     if (isGameRunning && !isGamePaused) {
       const updateInterval = setInterval(() => {
-        setTargets((prevTargets) => 
-          updateTargetPositions(prevTargets, settings.targetSpeed, settings.targetMovementRange)
-        );
-        // Update NPC positions and states here
+        if (gameMode === 'timed' || gameMode === 'endurance' || gameMode === 'precision') {
+          setTargets((prevTargets) =>
+            updateTargetPositions(prevTargets, settings.targetSpeed, settings.targetMovementRange),
+          );
+        }
+
         setNPCs((prevNPCs) => {
           return prevNPCs.map((npc) => {
-            // Implement NPC movement and state changes based on settings.npcDifficulty
-            // This is a placeholder and should be replaced with actual AI logic
-            const newX = npc.position[0] + (Math.random() - 0.5) * settings.targetSpeed;
-            const newZ = npc.position[2] + (Math.random() - 0.5) * settings.targetSpeed;
+            // Implement more advanced NPC AI logic here
+            const newX = npc.position[0] + (Math.random() - 0.5) * settings.npcMovementSpeed;
+            const newZ = npc.position[2] + (Math.random() - 0.5) * settings.npcMovementSpeed;
             return {
               ...npc,
               position: [newX, 0, newZ],
@@ -218,50 +322,32 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
             };
           });
         });
+
+        // Update player rankings
+        setPlayerRankings((prevRankings) => {
+          const updatedRankings = prevRankings.map((ranking) => {
+            if (ranking.id === userProfile?.id) {
+              return { ...ranking, score, kills: playerKills };
+            }
+            return ranking;
+          });
+          return updatedRankings.sort((a, b) => b.score - a.score);
+        });
       }, 1000 / 60); // 60 FPS update rate
 
       return () => clearInterval(updateInterval);
     }
-  }, [isGameRunning, isGamePaused, settings.targetSpeed, settings.targetMovementRange, settings.npcDifficulty]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const pressedKey = event.key as Hotkey;
-      if (hotbar.some(slot => slot.key === pressedKey)) {
-        handleWeaponSwitch(pressedKey);
-      }
-    };
-
-    const handleWheel = (event: WheelEvent) => {
-      if (isGameRunning && !isGamePaused) {
-        if (event.deltaY < 0) {
-          cycleWeapon('prev');
-        } else {
-          cycleWeapon('next');
-        }
-      }
-    };
-  
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('wheel', handleWheel);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('wheel', handleWheel);
-    };
-  }, [handleWeaponSwitch, cycleWeapon, hotbar, isGameRunning, isGamePaused]);
-
-  const handlePlayerMove = useCallback((newPosition: [number, number, number]) => {
-    setPlayerPosition(newPosition);
-  }, []);
-
-  const handlePlayerRotate = useCallback((newRotation: [number, number, number]) => {
-    setPlayerRotation(newRotation);
-  }, []);
-
-  const handlePlayerDamage = useCallback((damage: number) => {
-    setPlayerHealth((prevHealth) => Math.max(0, prevHealth - damage));
-  }, []);
-
+  }, [
+    isGameRunning,
+    isGamePaused,
+    gameMode,
+    settings.targetSpeed,
+    settings.targetMovementRange,
+    settings.npcMovementSpeed,
+    score,
+    playerKills,
+    userProfile?.id,
+  ]);
 
   return {
     settings,
@@ -283,6 +369,8 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     shotsFired,
     hits,
     resumeCountdown,
+    isMultiplayer,
+    npcCount,
     setSettings,
     setCurrentWeapon,
     setTargets,
@@ -299,6 +387,8 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     setShotsFired,
     setHits,
     setResumeCountdown,
+    setIsMultiplayer,
+    setNpcCount,
     resetGameState,
     startGame,
     togglePause,
@@ -317,8 +407,9 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     playerRotation,
     playerHealth,
     playerMaxHealth,
-    setPlayerPosition: handlePlayerMove,
-    setPlayerRotation: handlePlayerRotate,
+    playerTeam,
+    setPlayerPosition,
+    setPlayerRotation,
     handlePlayerDamage,
   };
 };
