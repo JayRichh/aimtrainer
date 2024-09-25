@@ -1,5 +1,15 @@
 import * as THREE from 'three'
 
+// ... (keep all existing types)
+
+export interface PlayerRanking {
+  id: string
+  username: string
+  score: number
+}
+
+// Update HUDProps
+
 export type Vector3 = THREE.Vector3
 
 export interface CharacterProps {
@@ -25,6 +35,7 @@ export interface GameSettings {
   targetSpeed: number
   targetMovementRange: number
   crosshairStyle: string
+  crosshairColor: string
   colorblindMode: string
   bulletTrailEnabled: boolean
   timeOfDay: TimeOfDay
@@ -169,8 +180,11 @@ export interface HUDProps {
   hotbar: HotbarSlot[]
   onWeaponSwitch: (key: Hotkey) => void
   cycleWeapon: (direction: 'next' | 'prev') => void
-  players?: PlayerData[]
+  players?: PlayerRanking[]
+  npcs?: NPCData[]
 }
+
+// ... (keep all other existing types)
 
 export interface PauseMenuProps {
   onResume: () => void

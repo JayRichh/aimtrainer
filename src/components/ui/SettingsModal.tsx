@@ -18,11 +18,12 @@ import {
   Save
 } from 'lucide-react'
 import { renderCrosshair } from './HUD'
+import { ChromePicker } from 'react-color'
 
-const CrosshairPreview: React.FC<{ style: string }> = ({ style }) => {
+const CrosshairPreview: React.FC<{ style: string; color: string }> = ({ style, color }) => {
   return (
     <div className="w-16 h-16 ml-8 bg-gray-800 rounded-lg flex items-center justify-center">
-      {renderCrosshair(style)}
+      {renderCrosshair(style, color)}
     </div>
   )
 }
@@ -135,6 +136,7 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const [localSettings, setLocalSettings] = useState<GameSettings>(settings)
   const [activeTab, setActiveTab] = useState<'gameplay' | 'graphics' | 'audio'>('gameplay')
+  const [showColorPicker, setShowColorPicker] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -143,9 +145,12 @@ export function SettingsModal({
   }, [isOpen, settings])
 
   const handleChange = useCallback((name: string, value: string | number | boolean) => {
-    setLocalSettings((prev) => ({ ...prev, [name]: value }))
-    onSettingsChange({ [name]: value })
-  }, [onSettingsChange])
+    setLocalSettings((prev) => ({ ...prev, [name]: value }));
+    onSettingsChange({ [name]: value });
+    if (name === 'crosshairColor') {
+      setShowColorPicker(false);
+    }
+  }, [onSettingsChange]);
 
   const handleClose = useCallback(() => {
     if (userProfile) {
@@ -276,26 +281,60 @@ export function SettingsModal({
                     onChange={(value) => handleChange('graphicsQuality', value)}
                     icon={<Paintbrush size={18} className="text-gray-500" />}
                   />
-<div className="flex items-center mb-4 bg-gray-50 p-3 rounded-lg">
-                    <div className="flex items-center w-48 mr-4">
-                      <Crosshair size={18} className="text-gray-500" />
-                      <label htmlFor="crosshairStyle" className="ml-2 text-sm font-medium text-gray-700">
-                        Crosshair Style
-                      </label>
-                    </div>
-                    <select
-                      id="crosshairStyle"
-                      value={localSettings.crosshairStyle}
-                      onChange={(e) => handleChange('crosshairStyle', e.target.value)}
-                      className="flex-grow p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    >
-                      <option value="default">Default</option>
-                      <option value="dot">Dot</option>
-                      <option value="cross">Cross</option>
-                      <option value="circle">Circle</option>
-                    </select>
-                    <CrosshairPreview style={localSettings.crosshairStyle} />
-                  </div>
+<div className="flex items-center mb-4 bg-gray-50 p-3 rounded-lg w-full relative">
+  <div className="flex items-center w-48 mr-4">
+    <Crosshair size={18} className="text-gray-500" />
+    <label className="ml-2 text-sm font-medium text-gray-700">
+      Crosshair
+    </label>
+  </div>
+  <div className="flex-grow flex items-center justify-between">
+    <div className="flex items-center space-x-6">
+      <div className="flex flex-col">
+        <label htmlFor="crosshairStyle" className="text-xs font-medium text-gray-500 mb-1">
+          Style
+        </label>
+        <select
+          id="crosshairStyle"
+          value={localSettings.crosshairStyle}
+          onChange={(e) => handleChange('crosshairStyle', e.target.value)}
+          className="p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+        >
+          <option value="default">Default</option>
+          <option value="dot">Dot</option>
+          <option value="cross">Cross</option>
+          <option value="circle">Circle</option>
+        </select>
+      </div>
+      <div className="flex flex-col relative">
+        <label htmlFor="crosshairColor" className="text-xs font-medium text-gray-500 mb-1">
+          Color
+        </label>
+        <button
+          id="crosshairColor"
+          className="flex items-center space-x-2 p-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          onClick={() => setShowColorPicker(!showColorPicker)}
+        >
+          <div
+            className="w-4 h-4 rounded-full border border-gray-300"
+            style={{ backgroundColor: localSettings.crosshairColor }}
+          ></div>
+          <span className="text-sm text-gray-700">Pick Color</span>
+        </button>
+        {showColorPicker && (
+          <div className="absolute z-10 mt-1 top-full">
+            <ChromePicker
+              color={localSettings.crosshairColor}
+              onChange={(color) => handleChange('crosshairColor', color.hex)}
+              onChangeComplete={() => setShowColorPicker(false)}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+    <CrosshairPreview style={localSettings.crosshairStyle} color={localSettings.crosshairColor} />
+  </div>
+</div>
                   <CustomSelect
                     id="colorblindMode"
                     label="Colorblind Mode"

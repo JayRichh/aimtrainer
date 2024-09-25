@@ -9,7 +9,7 @@ import { SettingsModal } from './ui/SettingsModal'
 import { MainMenu } from './ui/MainMenu'
 import { PostGameSummary } from './ui/PostGameSummary'
 import { PauseMenu } from './ui/PauseMenu'
-import { GameMode, GameProps, GameSettings, TimeOfDay, WeatherCondition } from '../types'
+import { GameMode, GameProps, GameSettings, TimeOfDay, WeatherCondition, PlayerRanking } from '../types'
 import { useGameState } from '../hooks/useGameState'
 import { audioManager } from '../utils/audioManager'
 import CameraController from './CameraController'
@@ -33,6 +33,8 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sunPosition = useMemo<[number, number, number]>(() => [100, 50, 100], [])
   const [isTransitioning, setIsTransitioning] = useState(false)
+
+  // ... (keep the rest of the component logic unchanged)
 
   const isUIOpen = useMemo(
     () =>
@@ -79,8 +81,8 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
         if (prev <= 1) {
           clearInterval(countdownInterval)
           setIsTransitioning(false)
-          gameState.setIsGamePaused(false) // Ensure the game is unpaused after the countdown
-          callback() // Call the lockControls function after unpausing
+          gameState.setIsGamePaused(false)
+          callback()
           return 0
         }
         return prev - 1
@@ -98,19 +100,15 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
   const handleStartGame = useCallback((selectedMode: GameMode) => {
     gameState.startGame(selectedMode)
     startCountdown(() => {
-      // Ensure the controls lock after the countdown and when the game starts
       lockControls()
     })
   }, [gameState, lockControls, startCountdown])
-  
 
   const handlePauseToggle = useCallback(() => {
     if (gameState.isGameRunning && !isTransitioning && !gameState.isSettingsOpen) {
       if (gameState.isGamePaused) {
-        // Game is paused and we want to resume it, so we start the countdown here.
         startCountdown(lockControls)
       } else {
-        // Game is running and we want to pause it, so we unlock the controls and pause the game.
         unlockControls()
         gameState.togglePause()
       }
@@ -131,6 +129,19 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
     gameState.setIsGameRunning(false)
     unlockControls()
   }, [gameState, unlockControls])
+
+  const handleNPCShoot = useCallback((npcId: string) => {
+    // Implement NPC shooting logic here
+    console.log(`NPC ${npcId} is shooting`)
+    // You can add more complex logic here, such as checking if the NPC can hit the player
+    // and applying damage to the player if hit
+    // For example:
+    // const hitChance = 0.3 // 30% chance to hit
+    // if (Math.random() < hitChance) {
+    //   const damage = 10
+    //   gameState.handlePlayerDamage(damage)
+    // }
+  }, [])
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -187,7 +198,6 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
       lockControls()
     }
   }, [gameState.isGameRunning, isUIOpen, lockControls])
-
   return (
     <div className="relative w-screen h-screen overflow-hidden">
       <KeyboardControls map={keyboardMap}>
@@ -197,6 +207,7 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
           camera={{ fov: gameState.settings.fov, position: [0, 1.6, 0], near: 0.1, far: 1000 }}
           onClick={handleCanvasClick}
         >
+          {/* ... (keep the rest of the Canvas content unchanged) */}
           <CameraController fov={gameState.settings.fov} />
           <GraphicsController quality={gameState.settings.graphicsQuality} />
           <ColorblindController mode={gameState.settings.colorblindMode} />
@@ -214,6 +225,9 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
               isGamePaused={gameState.isGamePaused} 
               isSettingsOpen={gameState.isSettingsOpen} 
               isTransitioning={isTransitioning} 
+              npcs={gameState.npcs}
+              onNPCHit={gameState.handleNPCHit}
+              onNPCShoot={handleNPCShoot}
             />
           )}
           {gameState.isGameRunning && !isUIOpen && (
@@ -240,7 +254,7 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
             accuracy={gameState.accuracy}
             onRestart={() => handleStartGame(gameState.gameMode)}
             onExit={() => gameState.setShowMainMenu(true)}
-            playerRankings={gameState.playerRankings}
+            playerRankings={gameState.playerRankings as PlayerRanking[]}
           />
         </div>
       )}
@@ -251,18 +265,20 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
             score={gameState.score}
             timeLeft={gameState.timeLeft}
             accuracy={gameState.accuracy}
-            health={100}
+            health={gameState.playerHealth}
             settings={gameState.settings}
             currentWeapon={gameState.currentWeapon}
             isPaused={gameState.isGamePaused || isTransitioning}
             hotbar={gameState.hotbar}
             onWeaponSwitch={gameState.handleWeaponSwitch}
             cycleWeapon={gameState.cycleWeapon}
-            // players={gameState.playerRankings}
+            npcs={gameState.npcs}
+            players={gameState.playerRankings as PlayerRanking[]}
           />
         </div>
       )}
 
+      {/* ... (keep the rest of the component JSX unchanged) */}
       {gameState.isGamePaused && !gameState.isSettingsOpen && !isTransitioning && (
         <PauseMenu
           onResume={handlePauseToggle}

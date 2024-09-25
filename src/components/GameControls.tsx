@@ -3,8 +3,9 @@ import { Physics } from '@react-three/cannon';
 import { Ground } from './Ground';
 import { Character } from './Character';
 import { WeaponSystem } from '@/systems/WeaponSystem';
-import { WeaponSystemProps, WeaponType } from '../types'
+import { WeaponSystemProps, WeaponType, NPCData } from '../types'
 import { Target } from './Target';
+import NPC from './NPC';
 import { useGameState } from '../hooks/useGameState';
 
 interface GameControlsProps {
@@ -13,6 +14,9 @@ interface GameControlsProps {
   isGamePaused: boolean;
   isSettingsOpen: boolean;
   isTransitioning: boolean;
+  npcs: NPCData[];
+  onNPCHit: (npcId: string, damage: number) => void;
+  onNPCShoot: (npcId: string) => void;
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -21,7 +25,12 @@ const GameControls: React.FC<GameControlsProps> = ({
   isGamePaused,
   isSettingsOpen,
   isTransitioning,
+  npcs,
+  onNPCHit,
+  onNPCShoot,
 }) => {
+  const isPaused = isGamePaused || isSettingsOpen || isTransitioning;
+
   return (
     <Physics gravity={physicsGravity}>
       <Ground />
@@ -29,7 +38,7 @@ const GameControls: React.FC<GameControlsProps> = ({
         speed={gameState.settings.speed}
         sensitivity={gameState.settings.sensitivity}
         gravity={gameState.settings.gravity}
-        isGamePaused={isGamePaused || isSettingsOpen || isTransitioning}
+        isGamePaused={isPaused}
       />
       {gameState.targets.map((targetData) => (
         <Target
@@ -37,6 +46,16 @@ const GameControls: React.FC<GameControlsProps> = ({
           data={targetData}
           settings={gameState.settings}
           onHit={gameState.handleTargetHit}
+        />
+      ))}
+      {npcs.map((npcData) => (
+        <NPC
+          key={npcData.id}
+          data={npcData}
+          settings={gameState.settings}
+          onHit={onNPCHit}
+          onShoot={onNPCShoot}
+          playerPositions={{player: gameState.playerPosition}}
         />
       ))}
       <WeaponSystem
@@ -47,7 +66,20 @@ const GameControls: React.FC<GameControlsProps> = ({
         targets={gameState.targets}
         setTargets={gameState.setTargets}
         onHit={gameState.handleTargetHit}
-        isGamePaused={isGamePaused || isSettingsOpen || isTransitioning}
+        isGamePaused={isPaused}
+        npcs={npcs}
+        setNPCs={gameState.setNPCs}
+        players={[{
+          id: 'player',
+          username: 'Player',
+          position: gameState.playerPosition,
+          rotation: gameState.playerRotation,
+          health: gameState.playerHealth,
+          maxHealth: gameState.playerMaxHealth,
+          weapon: gameState.currentWeapon,
+          score: gameState.score
+        }]}
+        setPlayers={undefined} // We don't need to set players in single-player mode
       />
     </Physics>
   );

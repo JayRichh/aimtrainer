@@ -16,6 +16,7 @@ export default function Home() {
     graphicsQuality: 1,
     gravity: 9.8,
     crosshairStyle: 'default',
+    crosshairColor: '#42f56f',
     colorblindMode: 'none',
     bulletTrailEnabled: true,
     targetSpeed: 1,

@@ -3,6 +3,7 @@ import { GameSettings, GameMode, UserProfile, TargetData, WeaponType, TimeOfDay,
 import { generateRandomTargets, updateTargetPositions, regenerateTarget } from '../utils/targetUtils';
 import { hotbarConfig } from '../config/hotbarConfig';
 
+// ... (keep the existing helper functions)
 const generateRandomNPCs = (count: number, settings: GameSettings): NPCData[] => {
   return Array.from({ length: count }, (_, index) => ({
     id: `npc-${index}`,
@@ -37,8 +38,6 @@ const transformRankings = (profiles: UserProfile[]) => {
       score: profile.highScore, // Use highScore as score
   }));
 };
-
-
 export const useGameState = (initialSettings: GameSettings, userProfile: UserProfile | null, onProfileUpdate: (profile: UserProfile) => void) => {
   const [settings, setSettings] = useState<GameSettings>(initialSettings);
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('Pistol');
@@ -59,6 +58,12 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
   const [resumeCountdown, setResumeCountdown] = useState(0);
   const [isShowLobby, setIsShowLobby] = useState(false);
   const [playerRankings, setPlayerRankings] = useState<{ id: string, username: string, score: number }[]>([]);  // Adjusted type
+
+
+  const [playerPosition, setPlayerPosition] = useState<[number, number, number]>([0, 1.6, 0]);
+  const [playerRotation, setPlayerRotation] = useState<[number, number, number]>([0, 0, 0]);
+  const [playerHealth, setPlayerHealth] = useState(100);
+  const [playerMaxHealth] = useState(100);
 
   const handleWeaponSwitch = useCallback((key: Hotkey) => {
     const slot = hotbar.find(h => h.key === key);
@@ -245,6 +250,19 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     };
   }, [handleWeaponSwitch, cycleWeapon, hotbar, isGameRunning, isGamePaused]);
 
+  const handlePlayerMove = useCallback((newPosition: [number, number, number]) => {
+    setPlayerPosition(newPosition);
+  }, []);
+
+  const handlePlayerRotate = useCallback((newRotation: [number, number, number]) => {
+    setPlayerRotation(newRotation);
+  }, []);
+
+  const handlePlayerDamage = useCallback((damage: number) => {
+    setPlayerHealth((prevHealth) => Math.max(0, prevHealth - damage));
+  }, []);
+
+
   return {
     settings,
     currentWeapon,
@@ -294,6 +312,13 @@ export const useGameState = (initialSettings: GameSettings, userProfile: UserPro
     setWeatherCondition,
     handleWeaponSwitch,
     cycleWeapon,
-    playerRankings
+    playerRankings,
+    playerPosition,
+    playerRotation,
+    playerHealth,
+    playerMaxHealth,
+    setPlayerPosition: handlePlayerMove,
+    setPlayerRotation: handlePlayerRotate,
+    handlePlayerDamage,
   };
 };

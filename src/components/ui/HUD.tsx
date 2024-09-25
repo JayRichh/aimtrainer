@@ -64,43 +64,29 @@ const Hotbar: React.FC<{ hotbar: HotbarSlot[]; currentWeapon: WeaponType; onWeap
   )
 }
 
-export const renderCrosshair = (style: string) => {
+export const renderCrosshair = (style: string, color: string) => {
   switch (style) {
     case 'dot':
-      return <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-    case 'cross':
-      return (
-        <div className="relative w-6 h-6">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white transform -translate-y-1/2"></div>
-          <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2"></div>
-        </div>
-      )
-    case 'circle':
-      return <div className="w-5 h-5 border-2 border-white rounded-full"></div>
-    default:
-      return <div className="w-2 h-2 bg-white rounded-full"></div>
+        return <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></div>
+      case 'cross':
+        return (
+          <div className="relative w-6 h-6">
+            <div className="absolute top-1/2 left-0 right-0 h-0.5 transform -translate-y-1/2" style={{ backgroundColor: color }}></div>
+            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 transform -translate-x-1/2" style={{ backgroundColor: color }}></div>
+          </div>
+        )
+      case 'circle':
+        return <div className="w-5 h-5 rounded-full" style={{ border: `2px solid ${color}` }}></div>
+      default:
+        return <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
   }
 }
 
 export function HUD({ score, timeLeft, accuracy, health, settings, currentWeapon, isPaused, hotbar, onWeaponSwitch, cycleWeapon, players }: HUDProps) {
   const healthColor = useMemo(() => getColorForMode(settings.colorblindMode), [settings.colorblindMode])
 
-  const renderCrosshair = () => {
-    switch (settings.crosshairStyle) {
-      case 'dot':
-        return <div className="w-1.5 h-1.5 bg-white rounded-full filter-invert"></div>
-      case 'cross':
-        return (
-          <div className="relative w-6 h-6 filter-invert">
-            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white transform -translate-y-1/2"></div>
-            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white transform -translate-x-1/2"></div>
-          </div>
-        )
-      case 'circle':
-        return <div className="w-5 h-5 border-2 border-white rounded-full filter-invert"></div>
-      default:
-        return <div className="w-2 h-2 bg-white rounded-full filter-invert"></div>
-    }
+  const getCrosshair = () => {
+    return renderCrosshair(settings.crosshairStyle, settings.crosshairColor);
   }
 
   // const renderPlayers = () => {
@@ -167,8 +153,8 @@ export function HUD({ score, timeLeft, accuracy, health, settings, currentWeapon
 
       {/* Crosshair */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="filter-invert">
-          {renderCrosshair()}
+        <div>
+          {getCrosshair()}
         </div>
       </div>
 

@@ -19,12 +19,14 @@
     "next": "14.2.13",
     "postprocessing": "^6.36.2",
     "react": "^18",
+    "react-color": "^2.19.3",
     "react-dom": "^18",
     "three": "^0.168.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
+    "@types/react-color": "^3.0.12",
     "@types/react-dom": "^18",
     "@types/three": "^0.168.0",
     "autoprefixer": "^10.4.20",
