@@ -111,7 +111,7 @@ export function WeaponSystem({
 
     // Check for targets within the explosion radius
     targets.forEach((target) => {
-      const targetPosition = new THREE.Vector3(...target.position);
+      const targetPosition = target.position
       const distance = bullet.position.distanceTo(targetPosition);
       if (distance <= explosionRadius) {
         const damage = Math.floor(100 * (1 - distance / explosionRadius));
@@ -121,7 +121,7 @@ export function WeaponSystem({
 
     // Check for NPCs within the explosion radius
     npcs.forEach((npc) => {
-      const npcPosition = new THREE.Vector3(...npc.position);
+      const npcPosition = npc.position
       const distance = bullet.position.distanceTo(npcPosition);
       if (distance <= explosionRadius) {
         const damage = Math.floor(100 * (1 - distance / explosionRadius));
@@ -588,7 +588,7 @@ useEffect(() => {
         // Check for target hits
         for (let i = 0; i < targets.length; i++) {
           const target = targets[i];
-          const targetPosition = new THREE.Vector3(...target.position);
+          const targetPosition = target.position
           const distance = bullet.position.distanceTo(targetPosition);
           const collisionDistance = 0.05 + target.size * 0.5;
     
@@ -613,7 +613,7 @@ useEffect(() => {
       // Check for NPC hits
       for (let i = 0; i < npcs.length; i++) {
         const npc = npcs[i];
-        const npcPosition = new THREE.Vector3(...npc.position);
+        const npcPosition = npc.position
         const distance = bullet.position.distanceTo(npcPosition);
         const collisionDistance = 0.05 + 1; // Assuming NPC size is 1 unit
   
