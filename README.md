@@ -58,7 +58,8 @@ Some planned features and improvements for AimTrainer:
 ### Weapon System Improvements
 
 - [x] Implement basic weapon functionality
-- [ ] Add multiple weapon types (e.g., pistol, rifle, sniper)
+- [x] Add multiple weapon types (e.g., pistol, rifle, sniper)
+- [ ] Design and implement blood splatter effects
 - [ ] Implement weapon recoil and spread patterns
 - [ ] Create a weapon upgrade system
 
@@ -73,7 +74,7 @@ Some planned features and improvements for AimTrainer:
 - [x] Implement basic 3D graphics with Three.js
 - [x] Create a basic performance optimization system
 - [ ] Optimize rendering for better performance on low-end devices
-- [ ] Add advanced lighting and shadow effects
+- [x] Add advanced lighting and shadow effects
 - [ ] Implement level of detail (LOD) system for complex objects
 
 ### User Experience and Accessibility
