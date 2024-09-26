@@ -8,6 +8,7 @@ export interface PlayerProps {
     position: [number, number, number]
     rotation: [number, number, number]
     speed: number
+    isNPC?: boolean
 }
 
 const createSmileyTexture = () => {
@@ -42,7 +43,7 @@ const createSmileyTexture = () => {
   return new THREE.CanvasTexture(canvas);
 };
 
-const Player: React.FC<PlayerProps> = ({ position, rotation, speed }) => {
+const Player: React.FC<PlayerProps> = ({ position, rotation, speed, isNPC = false }) => {
   const playerRef = useRef<THREE.Group>(null);
   const smileyTexture = useRef(createSmileyTexture());
 
@@ -54,13 +55,11 @@ const Player: React.FC<PlayerProps> = ({ position, rotation, speed }) => {
   }, [position, rotation]);
 
   useFrame((state, delta) => {
-    if (!playerRef.current) return;
+    if (!playerRef.current || isNPC) return; // Skip movement if NPC
 
-    // Example of updating player position in case you want to move it
+    // Movement logic for player character only
     const direction = new THREE.Vector3(0, 0, -1).normalize();
     playerRef.current.position.add(direction.multiplyScalar(speed * delta));
-
-    // Update game state or other logic...
   });
 
   return (

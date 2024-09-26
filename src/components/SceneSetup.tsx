@@ -69,7 +69,7 @@ const SceneSetup: React.FC<SceneSetupProps> = React.memo(
 
     useFrame(() => {
       if (directionalLightRef.current) {
-        directionalLightRef.current.position.copy(new THREE.Vector3(...sunPosition));
+        directionalLightRef.current.position.copy(sunPosition);
       }
     });
 

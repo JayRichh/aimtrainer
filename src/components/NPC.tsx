@@ -1,99 +1,164 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { NPCProps, WeaponType } from '../types';
+import { NPCProps, Vector3 } from '../types';
 import Player from './Player';
 import { Weapon } from './Weapon';
+import {
+  updateNPCMovement,
+  updateNPCShooting,
+  initializeNPC,
+  ExtendedNPCData,
+} from '../utils/npcUtils';
 
-const NPC: React.FC<NPCProps> = ({ data, settings, onHit, onShoot, playerPositions }) => {
+const NPC: React.FC<NPCProps> = ({
+  data,
+  settings,
+  onHit,
+  onShoot,
+  playerPositions,
+  mapBounds,
+  gameState,
+}) => {
   const npcRef = useRef<THREE.Group>(null);
-  const lastShootTimeRef = useRef<number>(Date.now());
+  const weaponRef = useRef<THREE.Group>(null);
   const muzzleFlashRef = useRef<THREE.Mesh>(null);
   const [isShooting, setIsShooting] = useState(false);
-  const steeringForceRef = useRef<THREE.Vector3>(new THREE.Vector3());
 
-  useEffect(() => {
-    if (npcRef.current) {
-      npcRef.current.position.set(...data.position);
-      npcRef.current.rotation.set(...data.rotation);
-    }
-  }, [data.position, data.rotation]);
+  // Use a ref for extendedData
+  const extendedDataRef = useRef<ExtendedNPCData>(initializeNPC(data));
+  const bobbingOffset = useRef(0);
 
   const handleNPCShoot = () => {
-    onShoot(data.id);
+    onShoot(extendedDataRef.current.id);
     setIsShooting(true);
     setTimeout(() => setIsShooting(false), 100);
   };
 
+  const respawnNPC = () => {
+    const playerPos = Object.values(playerPositions)[0];
+    const newPosition = getRandomPositionAroundPlayer(
+      playerPos,
+      5,
+      20,
+      mapBounds,
+    );
+    extendedDataRef.current.position.copy(newPosition);
+    extendedDataRef.current.targetPosition.copy(newPosition);
+    extendedDataRef.current.lastMoveTime = Date.now();
+    extendedDataRef.current.moveInterval = Math.random() * 2000 + 1000;
+    extendedDataRef.current.state = 'idle';
+  };
+
   useFrame((state, delta) => {
-    if (!npcRef.current) return;
+    if (!npcRef.current || gameState !== 'playing') return;
 
-    const npcPosition = new THREE.Vector3(...data.position);
     let closestPlayerDistance = Infinity;
-    let closestPlayerPosition: THREE.Vector3 | null = null;
+    let closestPlayerPosition: Vector3 | null = null;
 
-    Object.values(playerPositions).forEach((playerPos) => {
-      const playerPosition = new THREE.Vector3(...playerPos);
-      const distance = npcPosition.distanceTo(playerPosition);
-
+    Object.entries(playerPositions).forEach(([playerId, playerPos]) => {
+      const distance = extendedDataRef.current.position.distanceTo(playerPos);
       if (distance < closestPlayerDistance) {
         closestPlayerDistance = distance;
-        closestPlayerPosition = playerPosition;
+        closestPlayerPosition = playerPos;
       }
     });
 
     if (closestPlayerPosition) {
-      // Look at the closest player
-      npcRef.current.lookAt(closestPlayerPosition);
+      // Update NPC movement
+      const updatedNPC = updateNPCMovement(
+        extendedDataRef.current,
+        closestPlayerPosition,
+        settings,
+        delta,
+        mapBounds,
+      );
 
-      // Move towards the player using steering behavior
-      const desiredVelocity = new THREE.Vector3().subVectors(closestPlayerPosition, npcPosition).normalize().multiplyScalar(settings.npcMovementSpeed);
-      const steeringForce = desiredVelocity.sub(steeringForceRef.current);
-      steeringForceRef.current.add(steeringForce.multiplyScalar(delta * 3));
-      npcRef.current.position.add(steeringForceRef.current.clone().multiplyScalar(delta));
+      // Update extendedDataRef directly
+      extendedDataRef.current = updatedNPC;
 
-      // Check line of sight before shooting
-      const direction = new THREE.Vector3().subVectors(closestPlayerPosition, npcPosition).normalize();
-      const raycaster = new THREE.Raycaster(npcPosition, direction);
-      const intersects = raycaster.intersectObjects(state.scene.children, true);
-      
-      if (intersects.length > 0 && intersects[0].distance < closestPlayerDistance) {
-        // Clear line of sight, shoot at intervals based on reaction time and accuracy
-        const currentTime = Date.now();
-        if (currentTime - lastShootTimeRef.current > data.reactionTime) {
-          const hitChance = Math.random();
-          if (hitChance <= data.accuracy) {
-            handleNPCShoot();
-          }
-          lastShootTimeRef.current = currentTime;
-        }
-      }
+      // Update NPC position and rotation in the scene
+      npcRef.current.position.copy(updatedNPC.position);
+      npcRef.current.rotation.copy(updatedNPC.rotation);
+
+      // Add bobbing motion to make the NPC less rigid
+      bobbingOffset.current += delta * 2; // Adjust speed as needed
+      const bobbingAmount = Math.sin(bobbingOffset.current) * 0.05; // Adjust amplitude as needed
+      npcRef.current.position.y += bobbingAmount;
+
+      // Update NPC shooting
+      updateNPCShooting(
+        updatedNPC,
+        closestPlayerPosition,
+        settings,
+        delta,
+        (hitScore: number) => {
+          onHit(updatedNPC.id, hitScore);
+          handleNPCShoot();
+        },
+      );
     }
-
-    // Update NPC position in the game state
-    data.position = [
-      npcRef.current.position.x,
-      npcRef.current.position.y,
-      npcRef.current.position.z,
-    ];
   });
+
+  // Handle hit event
+  useEffect(() => {
+    const handleHit = (event: CustomEvent) => {
+      if (event.detail.npcId === extendedDataRef.current.id) {
+        // Decrease health or handle NPC hit logic here
+        // For now, we'll just respawn the NPC
+        respawnNPC();
+      }
+    };
+
+    // Add event listener for hit
+    window.addEventListener('npcHit', handleHit as EventListener);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('npcHit', handleHit as EventListener);
+    };
+  }, []);
 
   return (
     <group ref={npcRef}>
       <Player
-        position={data.position}
-        rotation={data.rotation}
-        speed={data.speed}
+        position={[0, 0, 0]} // Relative to npcRef
+        rotation={[0, 0, 0]} // Relative to npcRef
+        speed={extendedDataRef.current.speed}
+        isNPC={true}
       />
-      <Weapon
-        currentWeapon={data.weapon}
-        isSwapping={false}
-        isShooting={isShooting}
-        onShoot={handleNPCShoot}
-        muzzleFlashRef={muzzleFlashRef}
-      />
+      <group position={[0, 0.5, -0.5]} rotation={[0, Math.PI, 0]}>
+        <Weapon
+          currentWeapon={extendedDataRef.current.weapon}
+          isSwapping={false}
+          isShooting={isShooting}
+          onShoot={handleNPCShoot}
+          muzzleFlashRef={muzzleFlashRef}
+          isNPC={true}
+          parentRef={npcRef}
+        />
+      </group>
     </group>
   );
+};
+
+// Helper function to get random position around player
+const getRandomPositionAroundPlayer = (
+  playerPosition: Vector3,
+  minDistance: number,
+  maxDistance: number,
+  mapBounds: { minX: number; maxX: number; minZ: number; maxZ: number },
+): Vector3 => {
+  const angle = Math.random() * Math.PI * 2;
+  const distance = Math.random() * (maxDistance - minDistance) + minDistance;
+  let x = playerPosition.x + Math.cos(angle) * distance;
+  let z = playerPosition.z + Math.sin(angle) * distance;
+
+  // Ensure the position is within map bounds
+  x = Math.max(mapBounds.minX, Math.min(mapBounds.maxX, x));
+  z = Math.max(mapBounds.minZ, Math.min(mapBounds.maxZ, z));
+
+  return new THREE.Vector3(x, playerPosition.y, z);
 };
 
 export default NPC;

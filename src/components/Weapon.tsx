@@ -1,23 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { WeaponType } from '../types';
+import { WeaponType, WeaponProps } from '../types';
 import { WeaponModel, getMuzzlePosition } from './WeaponModels';
-
-interface WeaponProps {
-  currentWeapon: WeaponType;
-  isSwapping: boolean; 
-  isShooting: boolean;
-  onShoot: () => void; // Adjusted to match your WeaponSystem
-  muzzleFlashRef: React.MutableRefObject<THREE.Mesh | null>;
-}
 
 export const Weapon: React.FC<WeaponProps> = ({
   currentWeapon,
   isSwapping,
-  isShooting, 
+  isShooting,
   onShoot,
   muzzleFlashRef,
+  isNPC = false,
+  parentRef,
 }) => {
   const weaponRef = useRef<THREE.Group>(null!);
   const swapAnimationRef = useRef<number>(0);
@@ -36,15 +30,20 @@ export const Weapon: React.FC<WeaponProps> = ({
 
   useFrame((_, delta) => {
     if (weaponRef.current) {
-      // Adjust weapon position relative to camera
-      const weaponOffset = new THREE.Vector3(0.4, -0.3, -0.7); // Adjust as needed
-      const rotatedOffset = weaponOffset.clone().applyQuaternion(camera.quaternion);
-      const weaponPosition = camera.position.clone().add(rotatedOffset);
-      weaponRef.current.position.lerp(weaponPosition, 0.1);
-
-      // Copy camera rotation
-      weaponRef.current.quaternion.copy(camera.quaternion);
-
+      
+      if (isNPC && parentRef?.current) {
+        // Position weapon relative to NPC
+        weaponRef.current.position.copy(parentRef.current.position);
+        weaponRef.current.quaternion.copy(parentRef.current.quaternion);
+      } else {
+        // Position weapon relative to player camera
+        const weaponOffset = new THREE.Vector3(0.4, -0.3, -0.7);
+        const rotatedOffset = weaponOffset.clone().applyQuaternion(camera.quaternion);
+        const weaponPosition = camera.position.clone().add(rotatedOffset);
+        weaponRef.current.position.lerp(weaponPosition, 0.1);
+        weaponRef.current.quaternion.copy(camera.quaternion);
+      }
+  
       // Handle swapping animation
       if (isSwapping) {
         swapAnimationRef.current += delta * 4;

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import * as THREE from 'three';
 import {
   GameSettings,
   GameMode,
@@ -9,8 +10,8 @@ import {
   WeatherCondition,
   Hotkey,
   HotbarSlot,
-  NPCData,
   PlayerRanking,
+  Vector3,
 } from '../types';
 import {
   generateRandomTargets,
@@ -20,6 +21,7 @@ import {
 import { hotbarConfig } from '../config/hotbarConfig';
 import { initSocket, closeSocket, getSocket } from '../utils/socketClient';
 import { Socket } from 'socket.io-client';
+import { updateNPCMovement, ExtendedNPCData, initializeNPC } from '../utils/npcUtils';
 
 const weaponTypes: WeaponType[] = [
   'Pistol', 'Rifle', 'Shotgun', 'Sniper', 'SMG',
@@ -31,28 +33,32 @@ const generateRandomNPCs = (
   settings: GameSettings,
   gameMode: GameMode,
   isMultiplayer: boolean,
-): NPCData[] => {
+): ExtendedNPCData[] => {
   if (isMultiplayer) {
     return []; // No bots in multiplayer mode
   }
 
-  return Array.from({ length: count }, (_, index) => ({
-    id: `npc-${index}`,
-    position: [Math.random() * 100 - 50, 0, Math.random() * 100 - 50],
-    rotation: [0, Math.random() * 360, 0],
-    health: 100,
-    maxHealth: 100,
-    weapon: weaponTypes[Math.floor(Math.random() * weaponTypes.length)],
-    state: 'idle',
-    speed: settings.npcMovementSpeed,
-    lastShootTime: Date.now(),
-    shootInterval: 1000 / settings.npcAccuracy,
-    movementTarget: [Math.random() * 100 - 50, 0, Math.random() * 100 - 50],
-    team: gameMode === 'teamDeathmatch' ? (Math.random() > 0.5 ? 'red' : 'blue') : undefined,
-    accuracy: settings.npcAccuracy,
-    reactionTime: settings.npcReactionTime,
-  }));
+  return Array.from({ length: count }, (_, index) => {
+    const baseNPC: ExtendedNPCData = initializeNPC({
+      id: `npc-${index}`,
+      position: new THREE.Vector3(Math.random() * 100 - 50, 0, Math.random() * 100 - 50),
+      rotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0),
+      health: 100,
+      maxHealth: 100,
+      weapon: weaponTypes[Math.floor(Math.random() * weaponTypes.length)],
+      state: 'idle',
+      speed: settings.npcMovementSpeed,
+      lastShootTime: Date.now(),
+      shootInterval: 1000 / settings.npcAccuracy,
+      movementTarget: new THREE.Vector3(Math.random() * 100 - 50, 0, Math.random() * 100 - 50),
+      team: gameMode === 'teamDeathmatch' ? (Math.random() > 0.5 ? 'red' : 'blue') : undefined,
+      accuracy: settings.npcAccuracy,
+      reactionTime: settings.npcReactionTime,
+    });
+    return baseNPC;
+  });
 };
+
 
 // Define fetchPlayerRankings if not imported
 async function fetchPlayerRankings(): Promise<PlayerRanking[]> {
@@ -74,7 +80,7 @@ export const useGameState = (
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('Pistol');
   const [hotbar, setHotbar] = useState<HotbarSlot[]>(hotbarConfig);
   const [targets, setTargets] = useState<TargetData[]>([]);
-  const [npcs, setNPCs] = useState<NPCData[]>([]);
+  const [npcs, setNPCs] = useState<ExtendedNPCData[]>([]);
   const [isGameRunning, setIsGameRunning] = useState(false);
   const [isGamePaused, setIsGamePaused] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -92,8 +98,8 @@ export const useGameState = (
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [npcCount, setNpcCount] = useState(0);
 
-  const [playerPosition, setPlayerPosition] = useState<[number, number, number]>([0, 1.6, 0]);
-  const [playerRotation, setPlayerRotation] = useState<[number, number, number]>([0, 0, 0]);
+  const [playerPosition, setPlayerPosition] = useState<Vector3>(new THREE.Vector3(0, 1.6, 0));
+  const [playerRotation, setPlayerRotation] = useState<THREE.Euler>(new THREE.Euler(0, 0, 0));
   const [playerHealth, setPlayerHealth] = useState(100);
   const [playerMaxHealth] = useState(100);
   const [playerKills, setPlayerKills] = useState(0);
@@ -158,14 +164,12 @@ export const useGameState = (
           setTimeLeft(300); // 5 minutes for deathmatch modes
           setTargets([]);
           setNPCs(generateRandomNPCs(npcCount, settings, selectedMode, isMultiplayer));
-
           setPlayerTeam(undefined);
           break;
         case 'teamDeathmatch':
           setTimeLeft(300); // 5 minutes for deathmatch modes
           setTargets([]);
           setNPCs(generateRandomNPCs(npcCount, settings, selectedMode, isMultiplayer));
-
           setPlayerTeam(Math.random() > 0.5 ? 'red' : 'blue');
           break;
         default:
@@ -389,20 +393,18 @@ export const useGameState = (
 
         setNPCs((prevNPCs) => {
           return prevNPCs.map((npc) => {
-            // Implement more advanced NPC AI logic here
-            const newX = npc.position[0] + (Math.random() - 0.5) * settings.npcMovementSpeed;
-            const newZ = npc.position[2] + (Math.random() - 0.5) * settings.npcMovementSpeed;
+            const updatedNPC = updateNPCMovement(npc, playerPosition, settings, 1/60, {
+              minX: -50, maxX: 50, minZ: -50, maxZ: 50
+            });
 
             // Randomly change NPC weapon based on probability
             const shouldChangeWeapon = Math.random() < settings.npcWeaponChangeProbability;
             const weapon = shouldChangeWeapon
               ? weaponTypes[Math.floor(Math.random() * weaponTypes.length)]
-              : npc.weapon;
+              : updatedNPC.weapon;
 
             return {
-              ...npc,
-              position: [newX, 0, newZ],
-              state: Math.random() > 0.8 ? 'attacking' : 'moving',
+              ...updatedNPC,
               weapon,
             };
           });
@@ -426,13 +428,11 @@ export const useGameState = (
     isGameRunning,
     isGamePaused,
     gameMode,
-    settings.targetSpeed,
-    settings.targetMovementRange,
-    settings.npcMovementSpeed,
-    // settings.npcWeaponChangeProbability,
+    settings,
     score,
     playerKills,
     userProfile?.id,
+    playerPosition,
   ]);
 
   return {

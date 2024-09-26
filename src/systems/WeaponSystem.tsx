@@ -5,9 +5,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { WeaponSystemProps, WeaponType, NPCData } from '../types';
+import { WeaponSystemProps, WeaponType, TargetData, GameSettings, PlayerData } from '../types';
 import { Weapon } from '../components/Weapon';
 import { createExplosion } from '@/components/ExplosionEffect';
+import { ExtendedNPCData } from '../utils/npcUtils';
 
 const BULLET_SPEEDS: Record<WeaponType, number> = {
   Pistol: 50,
@@ -79,6 +80,8 @@ export function WeaponSystem({
   isGamePaused,
   npcs,
   setNPCs,
+  players,
+  setPlayers,
 }: WeaponSystemProps) {
   const { camera, scene } = useThree();
   const [lastShot, setLastShot] = useState(0);
@@ -607,31 +610,31 @@ useEffect(() => {
           }
         }
 
-        // Check for NPC hits
-        for (let i = 0; i < npcs.length; i++) {
-          const npc = npcs[i];
-          const npcPosition = new THREE.Vector3(...npc.position);
-          const distance = bullet.position.distanceTo(npcPosition);
-          const collisionDistance = 0.05 + 1; // Assuming NPC size is 1 unit
-    
-          if (distance < collisionDistance) {
-            if (currentWeapon === 'RocketLauncher' || currentWeapon === 'GrenadeLauncher') {
-              if (!bullet.userData.exploded) {
-                bullet.userData.explosionUpdate = explode(bullet, scene);
-                bullet.userData.exploded = true;
-              }
-            } else {
-              const hitOffset = distance - 0.05;
-              const maxDistance = 1; // Assuming NPC size is 1 unit
-              const hitScore = Math.max(100 - (hitOffset / maxDistance) * 100, 10);
-              handleNPCHit(npc.id, hitScore);
-              removeBullet(bullet);
-              return false;
-            }
-            break;
-          }
-        }
+      // Check for NPC hits
+      for (let i = 0; i < npcs.length; i++) {
+        const npc = npcs[i];
+        const npcPosition = new THREE.Vector3(...npc.position);
+        const distance = bullet.position.distanceTo(npcPosition);
+        const collisionDistance = 0.05 + 1; // Assuming NPC size is 1 unit
   
+        if (distance < collisionDistance) {
+          if (currentWeapon === 'RocketLauncher' || currentWeapon === 'GrenadeLauncher') {
+            if (!bullet.userData.exploded) {
+              bullet.userData.explosionUpdate = explode(bullet, scene);
+              bullet.userData.exploded = true;
+            }
+          } else {
+            const hitOffset = distance - 0.05;
+            const maxDistance = 1; // Assuming NPC size is 1 unit
+            const hitScore = Math.max(100 - (hitOffset / maxDistance) * 100, 10);
+            handleNPCHit(npc.id, hitScore);
+            removeBullet(bullet);
+            return false;
+          }
+          break;
+        }
+      }
+
         if (
           (currentWeapon === 'RocketLauncher' || currentWeapon === 'GrenadeLauncher') &&
           !bullet.userData.exploded &&
@@ -659,7 +662,7 @@ useEffect(() => {
       return true;
     });
   });
-  
+
   return (
     <group ref={weaponRef}>
       <Weapon

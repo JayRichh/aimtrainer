@@ -16,7 +16,9 @@ import {
   TimeOfDay,
   WeatherCondition,
   PlayerRanking,
+  Vector3,
 } from '../types';
+import { ExtendedNPCData } from '../utils/npcUtils';
 import { useGameState } from '../hooks/useGameState';
 import { audioManager } from '../utils/audioManager';
 import CameraController from './CameraController';
@@ -24,6 +26,7 @@ import GraphicsController from './GraphicsController';
 import ColorblindController from './ColorblindController';
 import GameControls from './GameControls';
 import SceneSetup from './SceneSetup';
+import * as THREE from 'three';
 
 const keyboardMap = [
   { name: 'forward', keys: ['ArrowUp', 'KeyW'] },
@@ -38,8 +41,15 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
   const gameState = useGameState(initialSettings, userProfile, onProfileUpdate);
   const controlsRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sunPosition = useMemo<[number, number, number]>(() => [100, 50, 100], []);
+  const sunPosition = useMemo<Vector3>(() => new THREE.Vector3(100, 50, 100), []);
+
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const mapBounds = useMemo(() => ({
+    minX: -50,
+    maxX: 50,
+    minZ: -50,
+    maxZ: 50
+  }), []);
 
   const isUIOpen = useMemo(
     () =>
@@ -175,6 +185,16 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
     [gameState],
   );
 
+  const handleNPCHit = useCallback(
+    (npcId: string, damage: number) => {
+      gameState.handleNPCHit(npcId, damage);
+      // Dispatch a custom event for the NPC component to handle
+      const event = new CustomEvent('npcHit', { detail: { npcId, damage } });
+      window.dispatchEvent(event);
+    },
+    [gameState],
+  );
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -262,9 +282,10 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
               isGamePaused={gameState.isGamePaused}
               isSettingsOpen={gameState.isSettingsOpen}
               isTransitioning={isTransitioning}
-              npcs={gameState.npcs}
-              onNPCHit={gameState.handleNPCHit}
+              npcs={gameState.npcs as ExtendedNPCData[]}
+              onNPCHit={handleNPCHit}
               onNPCShoot={handleNPCShoot}
+              mapBounds={mapBounds}
             />
           )}
           {gameState.isGameRunning && !isUIOpen && <PointerLockControls ref={controlsRef} />}
@@ -312,7 +333,7 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
             hotbar={gameState.hotbar}
             onWeaponSwitch={gameState.handleWeaponSwitch}
             cycleWeapon={gameState.cycleWeapon}
-            npcs={gameState.npcs}
+            npcs={gameState.npcs as ExtendedNPCData[]}
             players={gameState.playerRankings}
             gameMode={gameState.gameMode}
           />

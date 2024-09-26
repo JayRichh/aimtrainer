@@ -3,10 +3,11 @@ import { Physics } from '@react-three/cannon';
 import { Ground } from './Ground';
 import { Character } from './Character';
 import { WeaponSystem } from '@/systems/WeaponSystem';
-import { WeaponSystemProps, WeaponType, NPCData, PlayerData } from '../types';
+import { WeaponSystemProps, WeaponType, PlayerData } from '../types';
 import { Target } from './Target';
 import NPC from './NPC';
 import { useGameState } from '../hooks/useGameState';
+import { ExtendedNPCData } from '../utils/npcUtils';
 
 interface GameControlsProps {
   gameState: ReturnType<typeof useGameState>;
@@ -14,9 +15,15 @@ interface GameControlsProps {
   isGamePaused: boolean;
   isSettingsOpen: boolean;
   isTransitioning: boolean;
-  npcs: NPCData[];
+  npcs: ExtendedNPCData[];
   onNPCHit: (npcId: string, damage: number) => void;
   onNPCShoot: (npcId: string) => void;
+  mapBounds: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  };
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -28,8 +35,10 @@ const GameControls: React.FC<GameControlsProps> = ({
   npcs,
   onNPCHit,
   onNPCShoot,
+  mapBounds,
 }) => {
   const isPaused = isGamePaused || isSettingsOpen || isTransitioning;
+  const currentGameState = isPaused ? 'paused' : (gameState.isGameRunning ? 'playing' : 'gameOver');
 
   const playerData: PlayerData = {
     id: 'player',
@@ -68,6 +77,8 @@ const GameControls: React.FC<GameControlsProps> = ({
           onHit={onNPCHit}
           onShoot={onNPCShoot}
           playerPositions={{ player: gameState.playerPosition }}
+          mapBounds={mapBounds}
+          gameState={currentGameState}
         />
       ))}
       <WeaponSystem

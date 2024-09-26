@@ -1,13 +1,15 @@
 import * as THREE from 'three';
+import { ExtendedNPCData } from './utils/npcUtils';
 
 export interface PlayerRanking {
   id: string;
   username: string;
   score: number;
-  kills: number; // Add this line
+  kills: number;
 }
 
 export type Vector3 = THREE.Vector3;
+export type Euler = THREE.Euler;
 
 export interface CharacterProps {
   speed: number;
@@ -82,20 +84,25 @@ export interface WeaponSystemProps {
   setTargets: React.Dispatch<React.SetStateAction<TargetData[]>>;
   onHit: (targetId: string, hitScore: number) => void;
   isGamePaused: boolean;
-  npcs: NPCData[];
-  setNPCs: React.Dispatch<React.SetStateAction<NPCData[]>>;
+  npcs: ExtendedNPCData[];
+  setNPCs: React.Dispatch<React.SetStateAction<ExtendedNPCData[]>>;
   players?: PlayerData[];
-  setPlayers?: React.Dispatch<React.SetStateAction<PlayerData[]>>; // Made optional
+  setPlayers?: React.Dispatch<React.SetStateAction<PlayerData[]>>;
 }
 
 export interface WeaponProps {
   currentWeapon: WeaponType;
-  isSwapping: boolean;
+  isSwapping: boolean; 
+  isShooting: boolean;
+  onShoot: () => void; 
+  muzzleFlashRef: React.MutableRefObject<THREE.Mesh | null>;
+  isNPC?: boolean;
+  parentRef?: React.RefObject<THREE.Object3D>; 
 }
 
 export interface TargetData {
   id: string;
-  position: [number, number, number];
+  position: Vector3;
   size: number;
   speed: number;
   health: number;
@@ -108,8 +115,8 @@ export type NPCState = 'idle' | 'moving' | 'attacking' | 'evading' | 'patrolling
 
 export interface NPCData {
   id: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
+  position: Vector3;
+  rotation: Euler;
   health: number;
   maxHealth: number;
   weapon: WeaponType;
@@ -117,18 +124,18 @@ export interface NPCData {
   speed: number;
   lastShootTime: number;
   shootInterval: number;
-  movementTarget: [number, number, number] | null;
+  movementTarget: Vector3 | null;
   team?: string;
   accuracy: number;
   reactionTime: number;
-  patrolPoints?: [number, number, number][];
+  patrolPoints?: Vector3[];
 }
 
 export interface PlayerData {
   id: string;
   username: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
+  position: Vector3;
+  rotation: Euler;
   health: number;
   maxHealth: number;
   weapon: WeaponType;
@@ -143,12 +150,21 @@ export interface TargetProps {
 }
 
 export interface NPCProps {
-  data: NPCData;
+  data: ExtendedNPCData;
   settings: GameSettings;
   onHit: (npcId: string, hitScore: number) => void;
   onShoot: (npcId: string) => void;
-  playerPositions: { [playerId: string]: [number, number, number] };
+  playerPositions: { [playerId: string]: Vector3 };
+  isNPC?: boolean;
+  mapBounds: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  };
+  gameState: 'playing' | 'paused' | 'gameOver';
 }
+
 export type GameMode = 'timed' | 'endurance' | 'precision' | 'deathmatch' | 'teamDeathmatch';
 export type GraphicsQuality = 'Low' | 'Medium' | 'High';
 
@@ -157,8 +173,8 @@ export interface MainMenuProps {
   onJoinLobby: () => void;
   onSettingsOpen: () => void;
   highScore: number;
-  npcCount: number; // New prop for NPC count
-  setNpcCount: (count: number) => void; // New prop for setting NPC count
+  npcCount: number;
+  setNpcCount: (count: number) => void;
 }
 
 export interface PostGameSummaryProps {
@@ -191,11 +207,9 @@ export interface HUDProps {
   onWeaponSwitch: (key: Hotkey) => void;
   cycleWeapon: (direction: 'next' | 'prev') => void;
   players: PlayerRanking[];
-  npcs: NPCData[];
+  npcs: ExtendedNPCData[];
   gameMode: GameMode;
 }
-
-// ... (keep all other existing types)
 
 export interface PauseMenuProps {
   onResume: () => void;
@@ -212,9 +226,8 @@ export interface GameProps {
   lobbyId?: string;
 }
 
-// ... (keep all other existing types)
 export interface SceneSetupProps {
-  sunPosition: [number, number, number];
+  sunPosition: Vector3;
   graphicsQuality: number;
   timeOfDay: TimeOfDay;
   weatherCondition: WeatherCondition;
@@ -250,7 +263,7 @@ export interface AIBehavior {
 
 export interface GameState {
   players: PlayerData[];
-  npcs: NPCData[];
+  npcs: ExtendedNPCData[];
   npcCount: number;
   npcDifficulty: Difficulty;
   targets: TargetData[];

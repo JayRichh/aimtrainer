@@ -31,6 +31,7 @@ export default function Home() {
     npcReactionTime: 1000,
     npcTeamMode: false,
     npcWeaponChangeProbability: 0.1,
+
   };
 
   const [gameSettings, setGameSettings] = useState<GameSettings>(defaultSettings);
