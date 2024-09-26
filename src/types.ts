@@ -44,7 +44,7 @@ export interface GameSettings {
   npcAccuracy: number;
   npcReactionTime: number;
   npcTeamMode: boolean;
-  npcWeaponChangeProbability: number; // Add this line
+  npcWeaponChangeProbability: number;
 }
 
 export interface UserProfile {
