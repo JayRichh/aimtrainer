@@ -1,13 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { useSphere } from '@react-three/cannon';
-import { Vector3, Mesh, Quaternion, Raycaster } from 'three';
+import { Vector3, Mesh, Quaternion, Raycaster, Euler } from 'three';
 import { useKeyboardControls } from '@react-three/drei';
 import { CharacterProps } from '../types';
 
 const JUMP_FORCE = 30;
 const GROUND_THRESHOLD = 0.5;
-const JUMP_COOLDOWN = 250;
 
 export function Character({ 
   speed, 
@@ -24,7 +23,7 @@ export function Character({
   onShoot,
   onHit
 }: CharacterProps) {
-  const { camera, scene, mouse } = useThree();
+  const { camera, scene } = useThree();
   const [ref, api] = useSphere<Mesh>(() => ({
     mass: 1,
     type: 'Dynamic',
@@ -44,17 +43,18 @@ export function Character({
   }), [api.position, onMove]);
 
   const [, get] = useKeyboardControls();
-  const [canJump, setCanJump] = useState(true);
   const raycaster = new Raycaster(new Vector3(), new Vector3(0, -1, 0), 0, GROUND_THRESHOLD);
 
-  const lastMouseX = useRef(0);
-  const lastMouseY = useRef(0);
+  const euler = useRef(new Euler(0, 0, 0, 'YXZ'));
+  const PI_2 = Math.PI / 2;
 
   useEffect(() => {
     if (rotation) {
-      camera.quaternion.copy(rotation);
+      euler.current.setFromQuaternion(rotation);
+      camera.rotation.copy(euler.current);
     } else {
-      camera.rotation.set(0, Math.PI, 0);
+      euler.current.set(0, Math.PI, 0);
+      camera.rotation.copy(euler.current);
     }
   }, [camera, rotation]);
 
@@ -64,46 +64,49 @@ export function Character({
     return intersects.length > 0;
   };
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (isGamePaused) {
       api.velocity.set(0, 0, 0);
       return;
     }
 
-    const { forward, backward, left, right, jump, quickTurn, shoot } = get();
+    const { forward, backward, left, right, jump, shoot } = get();
     const direction = new Vector3();
 
-    const cameraQuaternion = new Quaternion();
-    camera.getWorldQuaternion(cameraQuaternion);
-    const cameraFront = new Vector3(0, 0, -1).applyQuaternion(cameraQuaternion);
-    const cameraRight = new Vector3(1, 0, 0).applyQuaternion(cameraQuaternion);
+    // Update rotation based on mouse movement
+    const movementX = state.mouse.x - state.mouse.x / state.size.width;
+    const movementY = state.mouse.y - state.mouse.y / state.size.height;
 
-    if (forward) direction.add(cameraFront);
-    if (backward) direction.sub(cameraFront);
-    if (left) direction.sub(cameraRight);
-    if (right) direction.add(cameraRight);
+    euler.current.setFromQuaternion(camera.quaternion);
 
-    direction.y = 0;
-    direction.normalize().multiplyScalar(speed);
+    euler.current.y -= movementX * sensitivity;
+    euler.current.x -= movementY * sensitivity;
+
+    euler.current.x = Math.max(-PI_2, Math.min(PI_2, euler.current.x));
+
+    camera.quaternion.setFromEuler(euler.current);
+
+    // Calculate movement direction
+    const rotation = new Euler(0, euler.current.y, 0, 'YXZ');
+    const forward_direction = new Vector3(0, 0, -1).applyEuler(rotation);
+    const right_direction = new Vector3(1, 0, 0).applyEuler(rotation);
+
+    if (forward) direction.add(forward_direction);
+    if (backward) direction.sub(forward_direction);
+    if (left) direction.sub(right_direction);
+    if (right) direction.add(right_direction);
+
+    direction.normalize().multiplyScalar(speed * delta);
 
     const onGround = isOnGround();
 
     api.velocity.set(direction.x, velocity.current[1], direction.z);
 
-    if (jump && onGround && canJump) {
+    if (jump && onGround) {
       api.velocity.set(velocity.current[0], JUMP_FORCE, velocity.current[2]);
-      setCanJump(false);
-      setTimeout(() => setCanJump(true), JUMP_COOLDOWN);
     }
 
-    api.applyForce([0, -gravity, 0], [0, 0, 0]);
-
-    if (quickTurn) {
-      camera.rotation.y += Math.PI;
-      if (onRotate) {
-        onRotate(camera.quaternion);
-      }
-    }
+    api.applyForce([0, -gravity * delta, 0], [0, 0, 0]);
 
     if (shoot && onShoot) {
       onShoot();
@@ -111,30 +114,18 @@ export function Character({
 
     camera.position.set(pos.current[0], pos.current[1] + 1.6, pos.current[2]);
 
-    // Apply sensitivity to mouse movement
-    const deltaX = mouse.x - lastMouseX.current;
-    const deltaY = mouse.y - lastMouseY.current;
-    camera.rotation.y -= sensitivity * deltaX;
-    camera.rotation.x -= sensitivity * deltaY;
-    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
-
-    lastMouseX.current = mouse.x;
-    lastMouseY.current = mouse.y;
+    if (onRotate) {
+      onRotate(camera.quaternion);
+    }
   });
 
   useEffect(() => {
     if (health !== undefined && maxHealth !== undefined && onHit) {
-      // This is a simple health check. You might want to implement more complex logic.
       if (health < maxHealth) {
         onHit(maxHealth - health);
       }
     }
   }, [health, maxHealth, onHit]);
-
-  // Log weapon changes
-  useEffect(() => {
-    console.log('Current weapon:', weapon);
-  }, [weapon]);
 
   return <mesh ref={ref} />;
 }
