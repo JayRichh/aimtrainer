@@ -12,6 +12,22 @@ export type GraphicsQuality = 1 | 2 | 3 | 4 | 5;
 export type NPCState = 'idle' | 'moving' | 'attacking' | 'evading' | 'patrolling';
 export type Hotkey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0';
 
+export interface CharacterProps {
+  speed: number;
+  sensitivity: number;
+  gravity: number;
+  isGamePaused: boolean;
+  position?: Vector3;
+  rotation?: Quaternion;
+  health?: number;
+  maxHealth?: number;
+  weapon?: WeaponType;
+  onMove?: (newPosition: Vector3) => void;
+  onRotate?: (newRotation: Quaternion) => void;
+  onShoot?: () => void;
+  onHit?: (damage: number) => void;
+}
+
 export interface CharacterData {
   id: string;
   position: Vector3;

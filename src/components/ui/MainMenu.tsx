@@ -1,4 +1,3 @@
-// components/MainMenu.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import { MainMenuProps, GameMode } from "../../types";
 import {
@@ -20,6 +19,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import InfoTooltip from "./InfoTooltip";
 import SocialLinks from "./SocialLinks";
 
+// GameModeButton Component
 const GameModeButton: React.FC<{
   mode: GameMode;
   label: string;
@@ -70,6 +70,9 @@ const GameModeButton: React.FC<{
   }
 );
 
+GameModeButton.displayName = "GameModeButton";
+
+// CounterButton Component
 const CounterButton: React.FC<{
   label: string;
   value: number;
@@ -111,6 +114,8 @@ const CounterButton: React.FC<{
     </div>
   );
 });
+
+CounterButton.displayName = "CounterButton";
 
 export function MainMenu({
   onStartGame,
