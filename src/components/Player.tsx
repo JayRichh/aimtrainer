@@ -5,10 +5,10 @@ import * as THREE from 'three';
 import { Vector3 } from '../types';
 
 export interface PlayerProps {
-    position: [number, number, number]
-    rotation: [number, number, number]
-    speed: number
-    isNPC?: boolean
+  position: [number, number, number];
+  rotation: [number, number, number];
+  speed: number;
+  isNPC?: boolean;
 }
 
 const createSmileyTexture = () => {

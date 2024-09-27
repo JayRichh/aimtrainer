@@ -12,6 +12,9 @@ import {
   HotbarSlot,
   PlayerRanking,
   Vector3,
+  NPCData,
+  AIBehavior,
+  ExtendedNPCData,
 } from '../types';
 import {
   generateRandomTargets,
@@ -21,11 +24,17 @@ import {
 import { hotbarConfig } from '../config/hotbarConfig';
 import { initSocket, closeSocket, getSocket } from '../utils/socketClient';
 import { Socket } from 'socket.io-client';
-import { updateNPCMovement, ExtendedNPCData, initializeNPC } from '../utils/npcUtils';
+import { updateNPCShooting, initializeNPC, updateNPCMovement } from '../utils/npcUtils';
 
 const weaponTypes: WeaponType[] = [
-  'Pistol', 'Rifle', 'Shotgun', 'Sniper', 'SMG',
-  'LaserGun', 'Crossbow', 'Flamethrower'
+  'Pistol',
+  'Rifle',
+  'Shotgun',
+  'Sniper',
+  'SMG',
+  'LaserGun',
+  'Crossbow',
+  'Flamethrower',
 ];
 
 const generateRandomNPCs = (
@@ -33,43 +42,49 @@ const generateRandomNPCs = (
   settings: GameSettings,
   gameMode: GameMode,
   isMultiplayer: boolean,
-): ExtendedNPCData[] => {
+): NPCData[] => {
   if (isMultiplayer) {
     return []; // No bots in multiplayer mode
   }
 
   return Array.from({ length: count }, (_, index) => {
-    const baseNPC: ExtendedNPCData = initializeNPC({
+    const baseNPC: NPCData = {
       id: `npc-${index}`,
       position: new THREE.Vector3(Math.random() * 100 - 50, 0, Math.random() * 100 - 50),
-      rotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0),
+      rotation: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.random() * Math.PI * 2, 0)),
+      eulerRotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0),
       health: 100,
       maxHealth: 100,
       weapon: weaponTypes[Math.floor(Math.random() * weaponTypes.length)],
-      state: 'idle',
       speed: settings.npcMovementSpeed,
       lastShootTime: Date.now(),
       shootInterval: 1000 / settings.npcAccuracy,
-      movementTarget: new THREE.Vector3(Math.random() * 100 - 50, 0, Math.random() * 100 - 50),
       team: gameMode === 'teamDeathmatch' ? (Math.random() > 0.5 ? 'red' : 'blue') : undefined,
       accuracy: settings.npcAccuracy,
       reactionTime: settings.npcReactionTime,
-    });
-    return baseNPC;
+      state: 'idle',
+      movementTarget: null,
+      aiBehavior: {
+        difficulty: settings.npcDifficulty,
+        accuracy: settings.npcAccuracy,
+        reactionTime: settings.npcReactionTime,
+        movementPattern: 'random',
+        aggressiveness: 0.5,
+      },
+    };
+    return initializeNPC(baseNPC);
   });
 };
 
-
-// Define fetchPlayerRankings if not imported
-async function fetchPlayerRankings(): Promise<PlayerRanking[]> {
-  // Fetch logic here
-  // Example mock implementation:
+// Mock implementation of fetchPlayerRankings
+const fetchPlayerRankings = async (): Promise<PlayerRanking[]> => {
+  // In a real implementation, this would fetch data from a server
   return [
-    { id: '1', username: 'player1', score: 1000, kills: 10 },
-    { id: '2', username: 'player2', score: 900, kills: 8 },
-    // Add more mock user profiles
+    { id: '1', username: 'Player1', score: 1000, kills: 10 },
+    { id: '2', username: 'Player2', score: 800, kills: 8 },
+    { id: '3', username: 'Player3', score: 600, kills: 6 },
   ];
-}
+};
 
 export const useGameState = (
   initialSettings: GameSettings,
@@ -80,7 +95,7 @@ export const useGameState = (
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('Pistol');
   const [hotbar, setHotbar] = useState<HotbarSlot[]>(hotbarConfig);
   const [targets, setTargets] = useState<TargetData[]>([]);
-  const [npcs, setNPCs] = useState<ExtendedNPCData[]>([]);
+  const [npcs, setNPCs] = useState<NPCData[]>([]);
   const [isGameRunning, setIsGameRunning] = useState(false);
   const [isGamePaused, setIsGamePaused] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -99,11 +114,18 @@ export const useGameState = (
   const [npcCount, setNpcCount] = useState(0);
 
   const [playerPosition, setPlayerPosition] = useState<Vector3>(new THREE.Vector3(0, 1.6, 0));
-  const [playerRotation, setPlayerRotation] = useState<THREE.Euler>(new THREE.Euler(0, 0, 0));
+  const [playerRotation, setPlayerRotation] = useState<THREE.Quaternion>(new THREE.Quaternion());
+  const [playerEulerRotation, setPlayerEulerRotation] = useState<THREE.Euler>(new THREE.Euler(0, 0, 0));
   const [playerHealth, setPlayerHealth] = useState(100);
   const [playerMaxHealth] = useState(100);
   const [playerKills, setPlayerKills] = useState(0);
   const [playerTeam, setPlayerTeam] = useState<'red' | 'blue' | undefined>(undefined);
+
+  const setPlayerRotationFromEuler = useCallback((euler: THREE.Euler) => {
+    setPlayerEulerRotation(euler);
+    const newQuaternion = new THREE.Quaternion().setFromEuler(euler);
+    setPlayerRotation(newQuaternion);
+  }, []);
 
   const handleWeaponSwitch = useCallback(
     (key: Hotkey) => {
@@ -161,16 +183,11 @@ export const useGameState = (
           setPlayerTeam(undefined);
           break;
         case 'deathmatch':
-          setTimeLeft(300); // 5 minutes for deathmatch modes
-          setTargets([]);
-          setNPCs(generateRandomNPCs(npcCount, settings, selectedMode, isMultiplayer));
-          setPlayerTeam(undefined);
-          break;
         case 'teamDeathmatch':
           setTimeLeft(300); // 5 minutes for deathmatch modes
           setTargets([]);
           setNPCs(generateRandomNPCs(npcCount, settings, selectedMode, isMultiplayer));
-          setPlayerTeam(Math.random() > 0.5 ? 'red' : 'blue');
+          setPlayerTeam(selectedMode === 'teamDeathmatch' ? (Math.random() > 0.5 ? 'red' : 'blue') : undefined);
           break;
         default:
           console.error('Unknown game mode:', selectedMode);
@@ -178,7 +195,6 @@ export const useGameState = (
     },
     [settings],
   );
-  
 
   const startGame = useCallback(
     (selectedMode: GameMode, isMultiplayer: boolean, npcCount: number) => {
@@ -187,7 +203,7 @@ export const useGameState = (
       setIsGamePaused(false);
       setShowMainMenu(false);
       setShowPostGameSummary(false);
-  
+
       // Initialize Socket.IO connection
       if (isMultiplayer) {
         initSocket();
@@ -195,7 +211,6 @@ export const useGameState = (
     },
     [resetGameState],
   );
-  
 
   const togglePause = useCallback(() => {
     if (isGameRunning) {
@@ -236,15 +251,18 @@ export const useGameState = (
     }));
   }, []);
 
-  const handlePostGameAction = useCallback((action: 'restart' | 'exit') => {
-    if (action === 'restart') {
-      startGame(gameMode, isMultiplayer, npcCount);
-    } else {
-      setShowPostGameSummary(false);
-      setShowMainMenu(true);
-      setIsGameRunning(false);
-    }
-  }, [gameMode, isMultiplayer, npcCount, startGame]);
+  const handlePostGameAction = useCallback(
+    (action: 'restart' | 'exit') => {
+      if (action === 'restart') {
+        startGame(gameMode, isMultiplayer, npcCount);
+      } else {
+        setShowPostGameSummary(false);
+        setShowMainMenu(true);
+        setIsGameRunning(false);
+      }
+    },
+    [gameMode, isMultiplayer, npcCount, startGame],
+  );
 
   const handleTargetHit = useCallback(
     (targetId: string, hitScore: number) => {
@@ -254,7 +272,7 @@ export const useGameState = (
             const newHealth = Math.max(0, target.health - hitScore);
             setScore((prevScore) => prevScore + Math.floor(hitScore));
             setHits((prevHits) => prevHits + 1);
-  
+
             if (newHealth === 0) {
               // Target destroyed, generate a new one
               return regenerateTarget(settings);
@@ -270,10 +288,10 @@ export const useGameState = (
       if (isMultiplayer && socket) {
         socket.emit('targetHit', { targetId, hitScore });
       }
-  },
-    [settings, isMultiplayer]
+    },
+    [settings, isMultiplayer],
   );
-  
+
   const handleNPCHit = useCallback((npcId: string, hitScore: number) => {
     setScore((prevScore) => prevScore + Math.floor(hitScore));
     setHits((prevHits) => prevHits + 1);
@@ -319,7 +337,7 @@ export const useGameState = (
       socket.emit('gameStart', { gameMode, settings });
     }
   }, [isGameRunning, isMultiplayer, gameMode, settings]);
-  
+
   useEffect(() => {
     const socket = getSocket();
     if (!isGameRunning && isMultiplayer && socket) {
@@ -343,19 +361,19 @@ export const useGameState = (
         //   console.log(prevTargets)
         // });
       });
-  
+
       socket.on('gameStarted', (data: { gameMode: GameMode; settings: GameSettings }) => {
         setGameMode(data.gameMode);
         setSettings(data.settings);
         setIsGameRunning(true);
       });
-  
+
       socket.on('gameEnded', (data: { score: number; playerKills: number }) => {
         setIsGameRunning(false);
         setShowPostGameSummary(true);
         // Update player rankings with the received data
       });
-  
+
       return () => {
         socket.off('targetHitUpdate');
         socket.off('gameStarted');
@@ -363,7 +381,6 @@ export const useGameState = (
       };
     }
   }, [isMultiplayer]);
-  
 
   useEffect(() => {
     if (isGameRunning && !isGamePaused && gameMode !== 'endurance') {
@@ -393,8 +410,10 @@ export const useGameState = (
 
         setNPCs((prevNPCs) => {
           return prevNPCs.map((npc) => {
-            const updatedNPC = updateNPCMovement(npc, playerPosition, settings, 1/60, {
-              minX: -50, maxX: 50, minZ: -50, maxZ: 50
+            const updatedNPC = updateNPCMovement(npc as ExtendedNPCData, playerPosition, 1 / 60, settings);
+
+            updateNPCShooting(updatedNPC, playerPosition, settings, 1 / 60, (hitScore) => {
+              handlePlayerDamage(hitScore);
             });
 
             // Randomly change NPC weapon based on probability
@@ -433,6 +452,7 @@ export const useGameState = (
     playerKills,
     userProfile?.id,
     playerPosition,
+    handlePlayerDamage,
   ]);
 
   return {
@@ -492,11 +512,12 @@ export const useGameState = (
     playerRankings,
     playerPosition,
     playerRotation,
+    playerEulerRotation,
     playerHealth,
     playerMaxHealth,
     playerTeam,
     setPlayerPosition,
-    setPlayerRotation,
+    setPlayerRotation: setPlayerRotationFromEuler,
     handlePlayerDamage,
   };
 };

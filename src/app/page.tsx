@@ -7,7 +7,7 @@ import { loadUserProfile } from '@/utils/profileUtils';
 
 export default function Home() {
   const defaultSettings: GameSettings = {
-    targetPosition: { x: 0, y: 0, z: 0 },
+    // targetPosition: { x: 0, y: 0, z: 0 },
     sensitivity: 1,
     volume: 0.5,
     fov: 85,
@@ -31,7 +31,6 @@ export default function Home() {
     npcReactionTime: 1000,
     npcTeamMode: false,
     npcWeaponChangeProbability: 0.1,
-
   };
 
   const [gameSettings, setGameSettings] = useState<GameSettings>(defaultSettings);

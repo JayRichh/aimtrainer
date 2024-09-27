@@ -1,35 +1,64 @@
 import * as THREE from 'three';
-import { ExtendedNPCData } from './utils/npcUtils';
-
-export interface PlayerRanking {
-  id: string;
-  username: string;
-  score: number;
-  kills: number;
-}
 
 export type Vector3 = THREE.Vector3;
+export type Quaternion = THREE.Quaternion;
 export type Euler = THREE.Euler;
-
-export interface CharacterProps {
-  speed: number;
-  sensitivity: number;
-  gravity: number;
-  isGamePaused: boolean;
-}
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type TimeOfDay = 'day' | 'night';
 export type WeatherCondition = 'clear' | 'cloudy' | 'rainy';
+export type GameMode = 'timed' | 'endurance' | 'precision' | 'deathmatch' | 'teamDeathmatch';
+export type GraphicsQuality = 1 | 2 | 3 | 4 | 5;
+export type NPCState = 'idle' | 'moving' | 'attacking' | 'evading' | 'patrolling';
+export type Hotkey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0';
+
+export interface CharacterData {
+  id: string;
+  position: Vector3;
+  rotation: Quaternion;
+  eulerRotation: Euler;
+  health: number;
+  maxHealth: number;
+  weapon: WeaponType;
+  speed: number;
+  lastShootTime: number;
+  shootInterval: number;
+}
+
+export interface PlayerData extends CharacterData {
+  username: string;
+  score: number;
+  team?: string;
+}
+
+export interface NPCData extends CharacterData {
+  state: NPCState;
+  movementTarget: Vector3 | null;
+  team?: string;
+  accuracy: number;
+  reactionTime: number;
+  patrolPoints?: Vector3[];
+  velocity?: Vector3;
+  isGrounded?: boolean;
+  targetPosition?: Vector3;
+  lastMoveTime?: number;
+  moveInterval?: number;
+  stuckCounter?: number;
+  aiBehavior: AIBehavior;
+  initializeNPC?: (npc: NPCData) => NPCData;
+}
+
+export interface ExtendedNPCData extends NPCData {
+  updateNPCShooting: (npc: NPCData, playerPosition: Vector3, settings: GameSettings, delta: number, onHit: (hitScore: number) => void) => void;
+}
 
 export interface GameSettings {
-  targetPosition: any;
   sensitivity: number;
   volume: number;
   fov: number;
   difficulty: Difficulty;
   speed: number;
-  graphicsQuality: number;
+  graphicsQuality: GraphicsQuality;
   gravity: number;
   targetSpeed: number;
   targetMovementRange: number;
@@ -55,8 +84,6 @@ export interface UserProfile {
   highScore: number;
   settings: GameSettings;
 }
-
-export type Hotkey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0';
 
 export type WeaponType =
   | 'Pistol'
@@ -84,20 +111,20 @@ export interface WeaponSystemProps {
   setTargets: React.Dispatch<React.SetStateAction<TargetData[]>>;
   onHit: (targetId: string, hitScore: number) => void;
   isGamePaused: boolean;
-  npcs: ExtendedNPCData[];
-  setNPCs: React.Dispatch<React.SetStateAction<ExtendedNPCData[]>>;
+  npcs: NPCData[];
+  setNPCs: React.Dispatch<React.SetStateAction<NPCData[]>>;
   players?: PlayerData[];
   setPlayers?: React.Dispatch<React.SetStateAction<PlayerData[]>>;
 }
 
 export interface WeaponProps {
   currentWeapon: WeaponType;
-  isSwapping: boolean; 
+  isSwapping: boolean;
   isShooting: boolean;
-  onShoot: () => void; 
+  onShoot: () => void;
   muzzleFlashRef: React.MutableRefObject<THREE.Mesh | null>;
   isNPC?: boolean;
-  parentRef?: React.RefObject<THREE.Object3D>; 
+  parentRef?: React.RefObject<THREE.Object3D>;
 }
 
 export interface TargetData {
@@ -111,38 +138,6 @@ export interface TargetData {
   isPopping?: boolean;
 }
 
-export type NPCState = 'idle' | 'moving' | 'attacking' | 'evading' | 'patrolling';
-
-export interface NPCData {
-  id: string;
-  position: Vector3;
-  rotation: Euler;
-  health: number;
-  maxHealth: number;
-  weapon: WeaponType;
-  state: NPCState;
-  speed: number;
-  lastShootTime: number;
-  shootInterval: number;
-  movementTarget: Vector3 | null;
-  team?: string;
-  accuracy: number;
-  reactionTime: number;
-  patrolPoints?: Vector3[];
-}
-
-export interface PlayerData {
-  id: string;
-  username: string;
-  position: Vector3;
-  rotation: Euler;
-  health: number;
-  maxHealth: number;
-  weapon: WeaponType;
-  score: number;
-  team?: string;
-}
-
 export interface TargetProps {
   data: TargetData;
   settings: GameSettings;
@@ -150,23 +145,27 @@ export interface TargetProps {
 }
 
 export interface NPCProps {
-  data: ExtendedNPCData;
+  data: NPCData;
   settings: GameSettings;
   onHit: (npcId: string, hitScore: number) => void;
   onShoot: (npcId: string) => void;
   playerPositions: { [playerId: string]: Vector3 };
-  isNPC?: boolean;
   mapBounds: {
     minX: number;
     maxX: number;
     minZ: number;
     maxZ: number;
   };
+  gameMode: GameMode;
   gameState: 'playing' | 'paused' | 'gameOver';
 }
 
-export type GameMode = 'timed' | 'endurance' | 'precision' | 'deathmatch' | 'teamDeathmatch';
-export type GraphicsQuality = 'Low' | 'Medium' | 'High';
+export interface PlayerRanking {
+  id: string;
+  username: string;
+  score: number;
+  kills: number;
+}
 
 export interface MainMenuProps {
   onStartGame: (mode: GameMode, isMultiplayer: boolean, npcCount: number) => void;
@@ -207,7 +206,7 @@ export interface HUDProps {
   onWeaponSwitch: (key: Hotkey) => void;
   cycleWeapon: (direction: 'next' | 'prev') => void;
   players: PlayerRanking[];
-  npcs: ExtendedNPCData[];
+  npcs: NPCData[];
   gameMode: GameMode;
 }
 
@@ -228,7 +227,7 @@ export interface GameProps {
 
 export interface SceneSetupProps {
   sunPosition: Vector3;
-  graphicsQuality: number;
+  graphicsQuality: GraphicsQuality;
   timeOfDay: TimeOfDay;
   weatherCondition: WeatherCondition;
 }
@@ -263,12 +262,11 @@ export interface AIBehavior {
 
 export interface GameState {
   players: PlayerData[];
-  npcs: ExtendedNPCData[];
+  npcs: NPCData[];
   npcCount: number;
   npcDifficulty: Difficulty;
   targets: TargetData[];
   gameMode: GameMode;
   timeRemaining: number;
   isGameOver: boolean;
-  handlePostGameAction: (_: string) => void;
 }

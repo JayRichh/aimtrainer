@@ -17,8 +17,8 @@ import {
   WeatherCondition,
   PlayerRanking,
   Vector3,
+  ExtendedNPCData,
 } from '../types';
-import { ExtendedNPCData } from '../utils/npcUtils';
 import { useGameState } from '../hooks/useGameState';
 import { audioManager } from '../utils/audioManager';
 import CameraController from './CameraController';
@@ -27,7 +27,7 @@ import ColorblindController from './ColorblindController';
 import GameControls from './GameControls';
 import SceneSetup from './SceneSetup';
 import * as THREE from 'three';
-
+import NPCData from "../utils/npcUtils"
 const keyboardMap = [
   { name: 'forward', keys: ['ArrowUp', 'KeyW'] },
   { name: 'backward', keys: ['ArrowDown', 'KeyS'] },
@@ -44,12 +44,15 @@ const Game: React.FC<GameProps> = ({ initialSettings, userProfile, onProfileUpda
   const sunPosition = useMemo<Vector3>(() => new THREE.Vector3(100, 50, 100), []);
 
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const mapBounds = useMemo(() => ({
-    minX: -50,
-    maxX: 50,
-    minZ: -50,
-    maxZ: 50
-  }), []);
+  const mapBounds = useMemo(
+    () => ({
+      minX: -50,
+      maxX: 50,
+      minZ: -50,
+      maxZ: 50,
+    }),
+    [],
+  );
 
   const isUIOpen = useMemo(
     () =>

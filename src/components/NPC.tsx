@@ -1,14 +1,13 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { NPCProps, Vector3 } from '../types';
+import { NPCProps, Vector3, NPCData, GameSettings, ExtendedNPCData } from '../types';
 import Player from './Player';
 import { Weapon } from './Weapon';
 import {
-  updateNPCMovement,
   updateNPCShooting,
   initializeNPC,
-  ExtendedNPCData,
+  updateNPCMovement,
 } from '../utils/npcUtils';
 
 const NPC: React.FC<NPCProps> = ({
@@ -24,30 +23,51 @@ const NPC: React.FC<NPCProps> = ({
   const weaponRef = useRef<THREE.Group>(null);
   const muzzleFlashRef = useRef<THREE.Mesh>(null);
   const [isShooting, setIsShooting] = useState(false);
+  const [isHit, setIsHit] = useState(false);
+  const [health, setHealth] = useState(100);
 
-  // Use a ref for extendedData
+  // Use ExtendedNPCData type for extendedDataRef
   const extendedDataRef = useRef<ExtendedNPCData>(initializeNPC(data));
-  const bobbingOffset = useRef(0);
+
+  // Create a pool of blood splatter objects
+  const bloodSplatterPool = useMemo(() => {
+    const pool: THREE.Mesh[] = [];
+    for (let i = 0; i < 10; i++) {
+      const splatter = new THREE.Mesh(
+        new THREE.CircleGeometry(0.2, 32),
+        new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide })
+      );
+      splatter.visible = false;
+      pool.push(splatter);
+    }
+    return pool;
+  }, []);
 
   const handleNPCShoot = () => {
-    onShoot(extendedDataRef.current.id);
+    onShoot(data.id);
     setIsShooting(true);
     setTimeout(() => setIsShooting(false), 100);
   };
 
   const respawnNPC = () => {
-    const playerPos = Object.values(playerPositions)[0];
-    const newPosition = getRandomPositionAroundPlayer(
-      playerPos,
-      5,
-      20,
-      mapBounds,
-    );
-    extendedDataRef.current.position.copy(newPosition);
-    extendedDataRef.current.targetPosition.copy(newPosition);
-    extendedDataRef.current.lastMoveTime = Date.now();
-    extendedDataRef.current.moveInterval = Math.random() * 2000 + 1000;
-    extendedDataRef.current.state = 'idle';
+    const initializedNPC = initializeNPC(data);
+    if (initializedNPC && npcRef.current) {
+      // Spawn NPC at a fixed position
+      const fixedPosition = new THREE.Vector3(
+        Math.random() * (mapBounds.maxX - mapBounds.minX) + mapBounds.minX,
+        0,
+        Math.random() * (mapBounds.maxZ - mapBounds.minZ) + mapBounds.minZ
+      );
+      initializedNPC.position.copy(fixedPosition);
+      initializedNPC.targetPosition = fixedPosition.clone();
+      initializedNPC.state = 'idle';
+      extendedDataRef.current = initializedNPC;
+      setHealth(100);
+
+      // Set the NPC's position and rotation
+      npcRef.current.position.copy(fixedPosition);
+      npcRef.current.rotation.setFromQuaternion(initializedNPC.rotation);
+    }
   };
 
   useFrame((state, delta) => {
@@ -66,47 +86,60 @@ const NPC: React.FC<NPCProps> = ({
 
     if (closestPlayerPosition) {
       // Update NPC movement
-      const updatedNPC = updateNPCMovement(
+      extendedDataRef.current = updateNPCMovement(
+        extendedDataRef.current,
+        closestPlayerPosition,
+        delta,
+        settings
+      );
+
+      // Update NPC position and rotation in the scene
+      npcRef.current.position.copy(extendedDataRef.current.position);
+      
+      // Update NPC rotation to face the closest player
+      const direction = new THREE.Vector3().subVectors(closestPlayerPosition, extendedDataRef.current.position);
+      const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction.normalize());
+      npcRef.current.quaternion.slerp(rotation, 0.1);
+
+      // Update NPC shooting
+      updateNPCShooting(
         extendedDataRef.current,
         closestPlayerPosition,
         settings,
         delta,
-        mapBounds,
-      );
-
-      // Update extendedDataRef directly
-      extendedDataRef.current = updatedNPC;
-
-      // Update NPC position and rotation in the scene
-      npcRef.current.position.copy(updatedNPC.position);
-      npcRef.current.rotation.copy(updatedNPC.rotation);
-
-      // Add bobbing motion to make the NPC less rigid
-      bobbingOffset.current += delta * 2; // Adjust speed as needed
-      const bobbingAmount = Math.sin(bobbingOffset.current) * 0.05; // Adjust amplitude as needed
-      npcRef.current.position.y += bobbingAmount;
-
-      // Update NPC shooting
-      updateNPCShooting(
-        updatedNPC,
-        closestPlayerPosition,
-        settings,
-        delta,
         (hitScore: number) => {
-          onHit(updatedNPC.id, hitScore);
+          onHit(extendedDataRef.current.id, hitScore);
           handleNPCShoot();
-        },
+        }
       );
+    }
+
+    // Handle hit effect
+    if (isHit) {
+      npcRef.current.scale.setScalar(1.2); // Expand on hit
+      setTimeout(() => {
+        if (npcRef.current) {
+          npcRef.current.scale.setScalar(1); // Return to normal size
+        }
+        setIsHit(false);
+      }, 100);
     }
   });
 
   // Handle hit event
   useEffect(() => {
     const handleHit = (event: CustomEvent) => {
-      if (event.detail.npcId === extendedDataRef.current.id) {
-        // Decrease health or handle NPC hit logic here
-        // For now, we'll just respawn the NPC
-        respawnNPC();
+      if (event.detail.npcId === data.id) {
+        setIsHit(true);
+        setHealth((prevHealth) => {
+          const newHealth = prevHealth - event.detail.damage;
+          if (newHealth <= 0) {
+            respawnNPC();
+            return 100;
+          }
+          return newHealth;
+        });
+        createSplatterEffect();
       }
     };
 
@@ -119,46 +152,55 @@ const NPC: React.FC<NPCProps> = ({
     };
   }, []);
 
+  const createSplatterEffect = () => {
+    if (npcRef.current) {
+      const availableSplatter = bloodSplatterPool.find(splatter => !splatter.visible);
+      if (availableSplatter) {
+        availableSplatter.position.copy(npcRef.current.position);
+        availableSplatter.position.y += 0.01; // Slightly above ground
+        availableSplatter.rotation.x = -Math.PI / 2; // Lay flat on the ground
+        availableSplatter.visible = true;
+        npcRef.current.parent?.add(availableSplatter);
+
+        // Hide splatter after a few seconds
+        setTimeout(() => {
+          availableSplatter.visible = false;
+          npcRef.current?.parent?.remove(availableSplatter);
+        }, 5000);
+      }
+    }
+  };
+
   return (
     <group ref={npcRef}>
       <Player
         position={[0, 0, 0]} // Relative to npcRef
         rotation={[0, 0, 0]} // Relative to npcRef
-        speed={extendedDataRef.current.speed}
+        speed={0} // Set speed to 0 as we're handling movement in updateNPCMovement
         isNPC={true}
       />
       <group position={[0, 0.5, -0.5]} rotation={[0, Math.PI, 0]}>
         <Weapon
-          currentWeapon={extendedDataRef.current.weapon}
+          currentWeapon={data.weapon}
           isSwapping={false}
           isShooting={isShooting}
           onShoot={handleNPCShoot}
           muzzleFlashRef={muzzleFlashRef}
           isNPC={true}
-          parentRef={npcRef}
+          parentRef={npcRef as RefObject<THREE.Group>}
         />
       </group>
+      {/* Health bar */}
+      <mesh position={[0, 2, 0]} rotation={[0, 0, 0]}>
+        <planeGeometry args={[1, 0.1]} />
+        <meshBasicMaterial color="red" />
+      </mesh>
+      <mesh position={[0, 2, 0]} rotation={[0, 0, 0]}>
+        <planeGeometry args={[health / 100, 0.1]} />
+        <meshBasicMaterial color="green" />
+      </mesh>
     </group>
   );
-};
-
-// Helper function to get random position around player
-const getRandomPositionAroundPlayer = (
-  playerPosition: Vector3,
-  minDistance: number,
-  maxDistance: number,
-  mapBounds: { minX: number; maxX: number; minZ: number; maxZ: number },
-): Vector3 => {
-  const angle = Math.random() * Math.PI * 2;
-  const distance = Math.random() * (maxDistance - minDistance) + minDistance;
-  let x = playerPosition.x + Math.cos(angle) * distance;
-  let z = playerPosition.z + Math.sin(angle) * distance;
-
-  // Ensure the position is within map bounds
-  x = Math.max(mapBounds.minX, Math.min(mapBounds.maxX, x));
-  z = Math.max(mapBounds.minZ, Math.min(mapBounds.maxZ, z));
-
-  return new THREE.Vector3(x, playerPosition.y, z);
 };
 
 export default NPC;

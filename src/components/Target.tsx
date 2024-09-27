@@ -73,8 +73,11 @@ export const Target: React.FC<TargetProps> = ({ data, settings, onHit }) => {
   const healthBarRef = useRef<THREE.Mesh>(null);
   const [fadeIn, setFadeIn] = useState(0);
   const [popAnimation, setPopAnimation] = useState(0);
-  
-  const targetColor = useMemo(() => getColorForMode(settings.colorblindMode), [settings.colorblindMode]);
+
+  const targetColor = useMemo(
+    () => getColorForMode(settings.colorblindMode),
+    [settings.colorblindMode],
+  );
   const healthBarMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: 'limegreen' }), []);
 
   useEffect(() => {

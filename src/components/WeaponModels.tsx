@@ -14,42 +14,42 @@ interface WeaponMaterials {
 
 // Function to create materials
 export const createMaterials = (): WeaponMaterials => {
-    const materials: WeaponMaterials = {
-      metalDark: new THREE.MeshStandardMaterial({
-        color: '#404040',
-        metalness: 0.8,
-        roughness: 0.2,
-      }),
-      metalLight: new THREE.MeshStandardMaterial({
-        color: '#a0a0a0',
-        metalness: 0.8,
-        roughness: 0.2,
-      }),
-      wood: new THREE.MeshStandardMaterial({
-        color: '#8b5a2b',
-        metalness: 0.2,
-        roughness: 0.7,
-      }),
-      plastic: new THREE.MeshStandardMaterial({
-        color: '#202020',
-        metalness: 0.1,
-        roughness: 0.6,
-      }),
-      glass: new THREE.MeshPhysicalMaterial({
-        color: '#ffffff',
-        metalness: 0.1,
-        roughness: 0,
-        transmission: 0.9,
-        transparent: true,
-      }),
-      ember: new THREE.MeshBasicMaterial({
-        color: '#ff6000',
-        transparent: true,
-        opacity: 0.8,
-      }),
-    };
-    return materials;
+  const materials: WeaponMaterials = {
+    metalDark: new THREE.MeshStandardMaterial({
+      color: '#404040',
+      metalness: 0.8,
+      roughness: 0.2,
+    }),
+    metalLight: new THREE.MeshStandardMaterial({
+      color: '#a0a0a0',
+      metalness: 0.8,
+      roughness: 0.2,
+    }),
+    wood: new THREE.MeshStandardMaterial({
+      color: '#8b5a2b',
+      metalness: 0.2,
+      roughness: 0.7,
+    }),
+    plastic: new THREE.MeshStandardMaterial({
+      color: '#202020',
+      metalness: 0.1,
+      roughness: 0.6,
+    }),
+    glass: new THREE.MeshPhysicalMaterial({
+      color: '#ffffff',
+      metalness: 0.1,
+      roughness: 0,
+      transmission: 0.9,
+      transparent: true,
+    }),
+    ember: new THREE.MeshBasicMaterial({
+      color: '#ff6000',
+      transparent: true,
+      opacity: 0.8,
+    }),
   };
+  return materials;
+};
 
 // Define interfaces for part options
 interface BarrelOptions {
@@ -200,10 +200,7 @@ const createScope = (options: ScopeOptions): THREE.Group => {
     rotation = new THREE.Euler(),
   } = options;
   const scopeGroup = new THREE.Group();
-  const mainBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius, radius, length, 16),
-    material
-  );
+  const mainBody = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 16), material);
   mainBody.rotation.x = Math.PI / 2;
   scopeGroup.add(mainBody);
   scopeGroup.position.copy(position);
@@ -322,7 +319,7 @@ export const PistolModel: React.FC<WeaponPartProps> = ({ materials }) => {
       frontSight,
       rearSight,
       hammer,
-      ejectionPort
+      ejectionPort,
     );
 
     return pistolGroup;
@@ -468,7 +465,7 @@ export const RifleModel: React.FC<WeaponPartProps> = ({ materials }) => {
       scope,
       foregrip,
       ejectionPort,
-      chargingHandle
+      chargingHandle,
     );
 
     return rifleGroup;
@@ -567,7 +564,7 @@ export const ShotgunModel: React.FC<WeaponPartProps> = ({ materials }) => {
       trigger,
       ejectionPort,
       frontSight,
-      rearSight
+      rearSight,
     );
 
     return shotgunGroup;
@@ -684,7 +681,7 @@ export const SniperModel: React.FC<WeaponPartProps> = ({ materials }) => {
       scope,
       bipodLeftLeg,
       bipodRightLeg,
-      boltHandle
+      boltHandle,
     );
 
     return sniperGroup;
@@ -793,7 +790,7 @@ export const SMGModel: React.FC<WeaponPartProps> = ({ materials }) => {
       grip,
       frontSight,
       rearSight,
-      chargingHandle
+      chargingHandle,
     );
 
     return smgGroup;
@@ -873,15 +870,7 @@ export const RocketLauncherModel: React.FC<WeaponPartProps> = ({ materials }) =>
     });
 
     // Assemble parts
-    launcherGroup.add(
-      tube,
-      frontSight,
-      rearSight,
-      grip,
-      shoulderRest,
-      trigger,
-      rocket
-    );
+    launcherGroup.add(tube, frontSight, rearSight, grip, shoulderRest, trigger, rocket);
 
     return launcherGroup;
   }, [materials]);
@@ -987,7 +976,7 @@ export const LaserGunModel: React.FC<WeaponPartProps> = ({ materials }) => {
       trigger,
       scope,
       sidePanelLeft,
-      sidePanelRight
+      sidePanelRight,
     );
 
     return laserGunGroup;
@@ -1040,15 +1029,11 @@ export const CrossbowModel: React.FC<WeaponPartProps> = ({ materials }) => {
 
     // String
     const stringGeometry = new THREE.BufferGeometry();
-    const stringVertices = new Float32Array([
-      -0.15, 0.1, 0.35,
-      0, 0.05, 0.1,
-      0.15, 0.1, 0.35,
-    ]);
+    const stringVertices = new Float32Array([-0.15, 0.1, 0.35, 0, 0.05, 0.1, 0.15, 0.1, 0.35]);
     stringGeometry.setAttribute('position', new THREE.BufferAttribute(stringVertices, 3));
     const string = new THREE.Line(
       stringGeometry,
-      new THREE.LineBasicMaterial({ color: '#000000' })
+      new THREE.LineBasicMaterial({ color: '#000000' }),
     );
 
     // Trigger
@@ -1094,7 +1079,7 @@ export const CrossbowModel: React.FC<WeaponPartProps> = ({ materials }) => {
       trigger,
       sight,
       arrowShaft,
-      arrowHead
+      arrowHead,
     );
 
     return crossbowGroup;
@@ -1180,16 +1165,7 @@ export const FlamethrowerModel: React.FC<WeaponPartProps> = ({ materials }) => {
     flame.rotation.x = Math.PI / 2;
 
     // Assemble parts
-    flamethrowerGroup.add(
-      tank,
-      barrel,
-      body,
-      grip,
-      trigger,
-      hose,
-      pilotLight,
-      flame
-    );
+    flamethrowerGroup.add(tank, barrel, body, grip, trigger, hose, pilotLight, flame);
 
     return flamethrowerGroup;
   }, [materials]);
@@ -1216,7 +1192,7 @@ export const GrenadeLauncherModel: React.FC<WeaponPartProps> = ({ materials }) =
     // Cylinder (Revolving chamber)
     const cylinder = new THREE.Mesh(
       new THREE.CylinderGeometry(0.05, 0.05, 0.07, 16),
-      materials.metalLight
+      materials.metalLight,
     );
     cylinder.rotation.x = Math.PI / 2;
     cylinder.position.set(0, 0, 0);
@@ -1258,15 +1234,7 @@ export const GrenadeLauncherModel: React.FC<WeaponPartProps> = ({ materials }) =
     });
 
     // Assemble parts
-    grenadeLauncherGroup.add(
-      barrel,
-      cylinder,
-      frame,
-      grip,
-      trigger,
-      frontSight,
-      rearSight
-    );
+    grenadeLauncherGroup.add(barrel, cylinder, frame, grip, trigger, frontSight, rearSight);
 
     return grenadeLauncherGroup;
   }, [materials]);
@@ -1280,34 +1248,34 @@ interface WeaponModelProps {
 }
 export const WeaponModel: React.FC<WeaponModelProps> = ({ weaponType }) => {
   const materials = createMaterials();
-  
+
   const renderModel = () => {
-      switch (weaponType) {
-        case 'Pistol':
+    switch (weaponType) {
+      case 'Pistol':
         return <PistolModel materials={materials} />;
-        case 'Rifle':
+      case 'Rifle':
         return <RifleModel materials={materials} />;
-        case 'Shotgun':
+      case 'Shotgun':
         return <ShotgunModel materials={materials} />;
-        case 'Sniper':
+      case 'Sniper':
         return <SniperModel materials={materials} />;
-        case 'SMG':
+      case 'SMG':
         return <SMGModel materials={materials} />;
-        case 'RocketLauncher':
+      case 'RocketLauncher':
         return <RocketLauncherModel materials={materials} />;
-        case 'LaserGun':
+      case 'LaserGun':
         return <LaserGunModel materials={materials} />;
-        case 'Crossbow':
+      case 'Crossbow':
         return <CrossbowModel materials={materials} />;
-        case 'Flamethrower':
+      case 'Flamethrower':
         return <FlamethrowerModel materials={materials} />;
-        case 'GrenadeLauncher':
+      case 'GrenadeLauncher':
         return <GrenadeLauncherModel materials={materials} />;
-        default:
-          return null;
-      }
+      default:
+        return null;
+    }
   };
-  
+
   return <group>{renderModel()}</group>;
 };
 // Function to get muzzle position for each weapon

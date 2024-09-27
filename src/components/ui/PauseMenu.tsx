@@ -75,16 +75,10 @@ const PauseMenuButton: React.FC<PauseMenuButtonProps> = ({ onClick, icon: Icon, 
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      className={`
-        w-full flex items-center justify-center px-6 py-4 rounded-lg font-bold text-white 
-        bg-gradient-to-r ${colorClasses[color as keyof typeof colorClasses]}
-        transform transition duration-200 ease-in-out
-        focus:outline-none focus:ring-2 focus:ring-${color}-500 focus:ring-opacity-50
-        shadow-lg hover:shadow-xl
-      `}
+      className={`flex w-full items-center justify-center rounded-lg bg-gradient-to-r px-6 py-4 font-bold text-white ${colorClasses[color as keyof typeof colorClasses]} transform transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-${color}-500 shadow-lg hover:shadow-xl focus:ring-opacity-50`}
       onClick={onClick}
     >
-      <Icon className="left-5 absolute" size={24} />
+      <Icon className="absolute left-5" size={24} />
       <span className="text-lg">{label}</span>
     </motion.button>
   );

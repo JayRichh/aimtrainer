@@ -75,7 +75,7 @@ export function PostGameSummary({
               transition={{ duration: 0.5 }}
               className="rounded-lg bg-gray-700 p-4 text-center"
             >
-<p className="mb-2 flex items-center justify-center text-lg uppercase tracking-wide text-gray-400">
+              <p className="mb-2 flex items-center justify-center text-lg uppercase tracking-wide text-gray-400">
                 <Target className="mr-2" size={20} />
                 Final Score
               </p>
@@ -116,7 +116,7 @@ export function PostGameSummary({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onRestart}
-              className="flex w-full transform items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 text-lg font-bold text-white transition duration-200 ease-in-out hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 shadow-lg hover:shadow-xl"
+              className="flex w-full transform items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 text-lg font-bold text-white shadow-lg transition duration-200 ease-in-out hover:from-blue-600 hover:to-blue-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
             >
               <RotateCcw className="mr-2" size={20} />
               Play Again
@@ -125,7 +125,7 @@ export function PostGameSummary({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onExit}
-              className="flex w-full transform items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-gray-700 px-6 py-4 text-lg font-bold text-white transition duration-200 ease-in-out hover:from-gray-700 hover:to-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 shadow-lg hover:shadow-xl"
+              className="flex w-full transform items-center justify-center rounded-lg bg-gradient-to-r from-gray-600 to-gray-700 px-6 py-4 text-lg font-bold text-white shadow-lg transition duration-200 ease-in-out hover:from-gray-700 hover:to-gray-800 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
             >
               <Home className="mr-2" size={20} />
               Exit to Main Menu

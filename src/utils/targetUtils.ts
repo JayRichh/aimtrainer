@@ -11,7 +11,7 @@ export function generateRandomTargets(settings: GameSettings, count: number = 1)
       position: new Vector3(
         Math.cos(angle) * radius,
         Math.random() * 2 + 1.5,
-        Math.sin(angle) * radius
+        Math.sin(angle) * radius,
       ),
       size: settings.difficulty === 'easy' ? 1.5 : settings.difficulty === 'medium' ? 1 : 0.8,
       speed: settings.difficulty === 'easy' ? 0.3 : settings.difficulty === 'medium' ? 0.5 : 0.8,
@@ -27,7 +27,7 @@ export function generateRandomTargets(settings: GameSettings, count: number = 1)
 export function updateTargetPositions(
   targets: TargetData[],
   targetSpeed: number,
-  targetMovementRange: number
+  targetMovementRange: number,
 ): TargetData[] {
   const time = Date.now() * 0.001;
   const scaledSpeed = targetSpeed * 0.1;

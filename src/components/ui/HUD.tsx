@@ -121,7 +121,6 @@ const Hotbar: React.FC<{
   );
 };
 
-
 export const renderCrosshair = (style: string, color: string) => {
   switch (style) {
     case 'dot':
@@ -238,8 +237,8 @@ export function HUD({
         <div>{getCrosshair()}</div>
       </div>
 
-       {/* Bottom HUD: Health, Weapon, and Hotbar */}
-       <motion.div
+      {/* Bottom HUD: Health, Weapon, and Hotbar */}
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}

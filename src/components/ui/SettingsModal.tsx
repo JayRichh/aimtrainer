@@ -256,7 +256,7 @@ export function SettingsModal({
               onChange={(value) => handleChange('fov', value)}
               icon={<Eye size={20} className="text-blue-400" />}
             />
-            <SliderField
+            {/* <SliderField
               id="graphicsQuality"
               label="Graphics Quality"
               value={localSettings.graphicsQuality}
@@ -265,7 +265,7 @@ export function SettingsModal({
               step={1}
               onChange={(value) => handleChange('graphicsQuality', value)}
               icon={<Paintbrush size={20} className="text-blue-400" />}
-            />
+            /> */}
             <FieldWrapper
               label="Crosshair"
               id="crosshairStyle"

@@ -30,7 +30,6 @@ export const Weapon: React.FC<WeaponProps> = ({
 
   useFrame((_, delta) => {
     if (weaponRef.current) {
-      
       if (isNPC && parentRef?.current) {
         // Position weapon relative to NPC
         weaponRef.current.position.copy(parentRef.current.position);
@@ -43,7 +42,7 @@ export const Weapon: React.FC<WeaponProps> = ({
         weaponRef.current.position.lerp(weaponPosition, 0.1);
         weaponRef.current.quaternion.copy(camera.quaternion);
       }
-  
+
       // Handle swapping animation
       if (isSwapping) {
         swapAnimationRef.current += delta * 4;
@@ -64,7 +63,7 @@ export const Weapon: React.FC<WeaponProps> = ({
         const recoilOffset = new THREE.Vector3(
           (Math.random() - 0.5) * 0.01,
           (Math.random() - 0.5) * 0.01,
-          recoilAmount * 0.1
+          recoilAmount * 0.1,
         );
         weaponRef.current.position.add(recoilOffset);
         weaponRef.current.rotation.x -= recoilAmount * 0.3;

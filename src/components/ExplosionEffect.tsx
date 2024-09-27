@@ -10,7 +10,13 @@ class Explosion {
   private position: THREE.Vector3;
   private isFinished: boolean = false;
 
-  constructor(scene: THREE.Scene, position: THREE.Vector3, color: THREE.Color, radius: number = 1, duration: number = 1.5) {
+  constructor(
+    scene: THREE.Scene,
+    position: THREE.Vector3,
+    color: THREE.Color,
+    radius: number = 1,
+    duration: number = 1.5,
+  ) {
     this.scene = scene;
     this.duration = duration;
     this.position = position.clone();
@@ -109,7 +115,13 @@ class Explosion {
   }
 }
 
-const createExplosion = (scene: THREE.Scene, position: THREE.Vector3, color: THREE.Color, radius: number = 2, duration: number = 2) => {
+const createExplosion = (
+  scene: THREE.Scene,
+  position: THREE.Vector3,
+  color: THREE.Color,
+  radius: number = 2,
+  duration: number = 2,
+) => {
   const explosion = new Explosion(scene, position, color, radius, duration);
   return () => explosion.update();
 };
